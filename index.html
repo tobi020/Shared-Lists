@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shared Lists</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="app-title">
+      <span class="app-title-dot"></span>
+      <span>Shared Lists</span>
+    </div>
+    <div class="sync-indicator" id="sync-indicator" title="Sync-Status"></div>
+    <div class="search-wrapper">
+      <span class="search-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="15" height="15"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+      <input class="search-input" id="global-search" type="text" placeholder="Alle Listen durchsuchen..." autocomplete="off" />
+      <button class="search-clear hidden" id="global-search-clear" title="Suche löschen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="13" height="13"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <button class="share-btn" id="share-btn" title="Teilen-Link kopieren">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      Teilen
+    </button>
+    <button class="add-list-btn" id="add-list-btn" title="Neue Liste hinzufügen">+ Neue Liste</button>
+  </header>
+
+  <main class="dashboard" id="dashboard"></main>
+
+  <!-- Confirm Modal -->
+  <div class="modal-backdrop" id="confirm-backdrop" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="confirm-title"></h2>
+        <button class="modal-close" id="confirm-close" aria-label="Schließen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <p class="confirm-message" id="confirm-message"></p>
+      <div class="modal-actions">
+        <button class="btn" id="confirm-cancel" type="button">Abbrechen</button>
+        <button class="btn danger" id="confirm-ok" type="button">Löschen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add List Modal -->
+  <div class="modal-backdrop" id="add-list-backdrop" role="dialog" aria-modal="true" aria-labelledby="add-list-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="add-list-title">Neue Liste erstellen</h2>
+        <button class="modal-close" id="add-list-close" aria-label="Schließen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="form-group" style="margin-bottom: 0">
+        <label class="form-label" for="add-list-name">Name</label>
+        <input class="form-input" id="add-list-name" type="text" placeholder="z.B. Einkaufsliste" maxlength="40" autocomplete="off" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="add-list-cancel" type="button">Abbrechen</button>
+        <button class="btn primary" id="add-list-confirm" type="button">Erstellen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal-backdrop" id="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-title">Eintrag bearbeiten</h2>
+        <button class="modal-close" id="modal-close" aria-label="Schließen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="edit-text">Text</label>
+        <input class="form-input" id="edit-text" type="text" autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Priorität</label>
+        <div class="priority-buttons">
+          <button class="priority-btn" data-priority="low" type="button">
+            <span class="priority-dot low"></span> Niedrig
+          </button>
+          <button class="priority-btn" data-priority="medium" type="button">
+            <span class="priority-dot medium"></span> Mittel
+          </button>
+          <button class="priority-btn" data-priority="high" type="button">
+            <span class="priority-dot high"></span> Hoch
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="edit-tags">Tags <span style="opacity:.5">(kommagetrennt)</span></label>
+        <input class="form-input" id="edit-tags" type="text" placeholder="z.B. wichtig, arbeit, privat" autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="edit-notes">Notizen</label>
+        <textarea class="form-input" id="edit-notes" rows="2" placeholder="Optionale Notizen..."></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn" id="modal-cancel" type="button">Abbrechen</button>
+        <button class="btn primary" id="modal-save" type="button">Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp }
+      from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'
+    import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp }
+      from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
+
+    let FIREBASE_CONFIG = null
+    try {
+      const mod = await import('./firebase-config.js')
+      FIREBASE_CONFIG = mod.FIREBASE_CONFIG
+      if (FIREBASE_CONFIG.apiKey === 'YOUR_API_KEY') FIREBASE_CONFIG = null
+    } catch { /* config file missing — localStorage-only mode */ }
+
+    if (FIREBASE_CONFIG) {
+      const app = initializeApp(FIREBASE_CONFIG)
+      window._firestoreDb              = getFirestore(app)
+      window._firestoreDoc             = doc
+      window._firestoreSetDoc          = setDoc
+      window._firestoreOnSnapshot      = onSnapshot
+      window._firestoreServerTimestamp = serverTimestamp
+    }
+
+    await import('./app.js')
+  </script>
+</body>
+</html>
