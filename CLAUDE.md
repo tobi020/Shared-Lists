@@ -2,62 +2,110 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Running the app
+## ⚠️ Wichtig
+Nur in **diesem** Ordner arbeiten (`Claude Shared List App`). Nicht in `Claude List App` (das ist das separate Original-Projekt).
 
-No build step. Open `index.html` directly in a browser, or serve it:
+## App starten
+
+Kein Build-Schritt. Python-Server (kein Node.js installiert):
 
 ```
-python -m http.server 3000
-# → http://localhost:3000
+python -m http.server 3001
+# → http://localhost:3001
 ```
 
-The `.claude/launch.json` configures this server for the preview panel.
+`.claude/launch.json` konfiguriert Port 3001 für das Preview-Panel.
 
-## Architecture
+## Live-Deployment
 
-Three files, no dependencies, no framework:
+- **Netlify URL:** https://leafy-piroshki-8d1875.netlify.app
+- **Netlify Site ID:** `6f1e0dcd-cc6a-479e-bea1-8950a6847bc8`
+- **Deploy:** Ordner per Drag & Drop auf app.netlify.com/projects/leafy-piroshki-8d1875/deploys
 
-| File | Role |
+## Architektur
+
+Vier Dateien, keine Dependencies, kein Framework, kein Node.js:
+
+| Datei | Rolle |
 |---|---|
-| `index.html` | Static shell: sticky header, empty `#dashboard` div, modal markup |
-| `style.css` | All styles — CSS custom properties in `:root` for the color theme |
-| `app.js` | Everything else: state, rendering, events |
+| `index.html` | Shell: Header, `#dashboard`, Modals, Firebase-Init via CDN |
+| `style.css` | Alle Styles — CSS Custom Properties in `:root` |
+| `app.js` | State, Rendering, Events, Firebase-Sync |
+| `firebase-config.js` | Firebase-Credentials (vom User ausgefüllt, nicht committen) |
+| `manifest.json` | PWA-Manifest (installierbar auf iOS/Android) |
+| `sw.js` | Service Worker für PWA |
 
-### `app.js` structure
+## Firebase / Echtzeit-Sync
 
-A single `ListApp` class is instantiated on load (`new ListApp()`). All methods are private (prefixed `_`) except the three public modal methods (`openEdit`, `closeEdit`, `saveEdit`).
+- **Datenbank:** Firestore, Projekt `claude-shared-lists`
+- **Collection:** `rooms/{roomId}` — ein Dokument pro geteilter Session
+- **Room-ID:** UUID im URL-Parameter `?room=` (wird automatisch generiert)
+- **SDK:** Via CDN in `index.html` geladen (kein npm)
+- Firebase-Globals werden in `index.html` auf `window._firestore*` gesetzt
 
-**State** lives entirely in `this.lists` (a `Record<listType, item[]>`) and is persisted to `localStorage` under the key `claude-list-app-v1`. Every mutation calls `this._save()` immediately after.
+### Sync-Mechanismus in `app.js`
 
-**Rendering** is innerHTML-based with two levels:
-- `_renderAll()` — called once on boot; generates the full card HTML for all four lists and writes it to `#dashboard`. The card shell (header + footer) is never re-rendered after this.
-- `_renderList(listType)` — called after every mutation; replaces only the `#list-{listType}` div's innerHTML and updates the clear-button state. The card search input retains its value because it sits in the header, not the list area.
+- `_initFirebase()` — prüft URL auf `?room=`, generiert UUID falls fehlend, startet `onSnapshot`-Listener
+- `_pushToFirestore()` — schreibt kompletten State nach Firestore
+- `_applyRemoteState(data)` — überschreibt lokalen State, ruft `_renderAll()` auf
+- `_setSyncStatus(status)` — setzt CSS-Klasse auf `#sync-indicator` (`syncing`|`synced`|`error`)
+- Echo-Unterdrückung: `_writtenBy: clientId` im Dokument, ignoriert eigene Writes
 
-**Events** use delegation: a single `click`, `submit`, and `input` listener on `#dashboard` handles all list interactions by reading `data-action`, `data-id`, and `data-list` attributes from the target. Modal events are bound directly to the static elements in `index.html`.
+### Dual-Write
+Jede Mutation: erst `localStorage` → dann Firestore (wenn `_syncEnabled && _roomId`).
 
-**Drag-and-drop** uses the native HTML5 Drag API. Cross-list dragging is intentionally blocked (`dragging.listType !== dropTarget.listType`). Drag is automatically disabled (via `draggable="false"` on items) when a search query is active to avoid index mismatches.
+## `app.js` Struktur
 
-### Adding a new list type
+Eine `ListApp`-Klasse, instanziert mit `new ListApp()`. Alle Methoden privat (Präfix `_`).
 
-1. Add an entry to `LIST_TYPES` array and `LIST_CONFIGS` object in `app.js`
-2. Add an SVG string to the `ICONS` object
-3. Add the list key to `_defaultState()` — no other changes needed
+### State
+- `this.lists` — `Record<listType, item[]>`, in `localStorage` unter `claude-list-app-v1`
+- `this.listTypes` — Array der aktiven Listen-IDs (dynamisch, nicht fest)
+- `this.listNames` — `Record<listType, string>` für Anzeigenamen
+- `this._accordionOpen` — welche Liste auf Mobile aufgeklappt ist
+- `this._roomId` — aktuelle Firebase Room-ID
 
-### Item schema
+### Rendering
+- `_renderAll()` — vollständiges Re-Render des Dashboards. Ruft am Ende `_applyAccordion()` auf (wichtig: Firebase-Sync ruft `_renderAll()` nach Remote-Updates auf, daher muss der Accordion-State danach wiederhergestellt werden)
+- `_renderList(listType)` — nur den Listeninhalt einer Karte aktualisieren
+
+### Accordion (Mobile)
+- `_applyAccordion()` — klappt alle Karten außer `this._accordionOpen` ein (nur bei viewport ≤ 640px)
+- `_accordionOpen` wird in `_renderAll()` persistent wiederhergestellt
+- Click auf eingeklappten Card-Header → öffnet diese Liste, klappt andere ein
+
+### Events
+Delegation auf `#dashboard` via `data-action`-Attribute: `toggle`, `edit`, `delete`, `start-rename`, `delete-list`. Modal-Events direkt gebunden.
+
+## Item-Schema
 
 ```js
 {
-  id: string,          // crypto.randomUUID()
+  id: string,           // crypto.randomUUID()
   text: string,
   completed: boolean,
-  createdAt: number,   // Date.now()
+  createdAt: number,    // Date.now()
   priority: 'low' | 'medium' | 'high',
   listType: string,
-  tags: string[],      // comma-separated input, split on save
+  tags: string[],
   notes: string,
 }
 ```
 
-### Color theme
+## Features
 
-All colors are CSS custom properties on `:root` in `style.css`. Change `--accent` / `--accent-hover` to retheme the red accent color globally.
+- **Prioritäten:** `high` = roter Hintergrund + linker Rand, `medium` = orange
+- **Mobile Accordion:** Eine Liste aufgeklappt, andere zeigen nur Titelzeile
+- **PWA:** Installierbar auf iOS/Android via manifest.json + sw.js
+- **Sync-Indikator:** Grün (synced), Amber pulsierend (syncing), Rot (error)
+- **Teilen-Button:** Kopiert URL mit `?room=` in Clipboard
+
+## Neue Liste hinzufügen
+
+1. Eintrag in `LIST_CONFIGS` in `app.js` hinzufügen
+2. SVG in `ICONS`-Objekt hinzufügen
+3. `_defaultLists()` anpassen — kein weiterer Aufwand
+
+## Farb-Theme
+
+Alle Farben als CSS Custom Properties in `:root` in `style.css`. `--accent` / `--accent-hover` für globale Akzentfarbe.

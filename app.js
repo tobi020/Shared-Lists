@@ -15,6 +15,7 @@ const ICONS = {
   empty: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="36" height="36"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>`,
   plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
   x: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  chevron: `<svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="6 9 12 15 18 9"/></svg>`,
 }
 
 // ── Default list configuration ─────────────────────────────────────────────
@@ -90,8 +91,9 @@ class ListApp {
     this.globalSearch = ''
     this.dragging    = null
     this.dropTarget  = null
-    this.editing     = null
+    this.editing      = null
     this.editPriority = 'low'
+    this._accordionOpen = null  // Track which card is open on mobile
     this._init()
   }
 
@@ -369,10 +371,22 @@ class ListApp {
     }
   }
 
+  _applyAccordion() {
+    if (window.innerWidth > 640) return
+    const open = this._accordionOpen && this.listTypes.includes(this._accordionOpen)
+      ? this._accordionOpen
+      : this.listTypes[0]
+    this._accordionOpen = open
+    this.listTypes.forEach(t => {
+      document.getElementById(`card-${t}`)?.classList.toggle('collapsed', t !== open)
+    })
+  }
+
   _renderAll() {
     document.getElementById('dashboard').innerHTML =
       this.listTypes.map(lt => this._cardHTML(lt)).join('')
     this.listTypes.forEach(lt => { this._renderList(lt); this._updateCount(lt) })
+    this._applyAccordion()
     document.querySelectorAll('.priority-select').forEach(s => this._syncSelectColor(s))
   }
 
@@ -401,6 +415,7 @@ class ListApp {
       <div class="card-title-actions">
         <span class="item-count" id="count-${lt}">0</span>
         ${canDelete ? `<button class="delete-list-btn" data-action="delete-list" data-list="${lt}" title="Liste löschen">${ICONS.x}</button>` : ''}
+        <button class="card-toggle-btn" data-action="toggle-card" data-list="${lt}" title="Ein-/Ausklappen">${ICONS.chevron}</button>
       </div>
     </div>
     <input class="card-search" type="text" placeholder="${cfg.searchPlaceholder}" data-list="${lt}" autocomplete="off" />
@@ -454,7 +469,8 @@ class ListApp {
     const meta = hasMeta ? `<div class="item-meta">${item.priority !== 'low' ? `<span class="priority-dot ${item.priority}"></span>` : ''}${tags}</div>` : ''
     const notes = item.notes ? `<div class="item-notes">${this._esc(item.notes)}</div>` : ''
 
-    return `<div class="list-item${completedCls}${dragCls}" data-id="${item.id}" data-list="${item.listType}" draggable="${dragDisabled ? 'false' : 'true'}">
+    const priorityCls = item.priority !== 'low' ? ` priority-${item.priority}` : ''
+    return `<div class="list-item${completedCls}${dragCls}${priorityCls}" data-id="${item.id}" data-list="${item.listType}" draggable="${dragDisabled ? 'false' : 'true'}">
   <div class="drag-handle" data-drag="true">${ICONS.grip}</div>
   <button class="item-checkbox" data-action="toggle" data-id="${item.id}" data-list="${item.listType}">${ICONS.check}</button>
   <div class="item-content">
@@ -759,6 +775,29 @@ class ListApp {
           b.classList.toggle('active', b === btn)
         )
       })
+    })
+
+    // ── Mobile Accordion ───────────────────────────
+    window.addEventListener('resize', () => this._applyAccordion())
+
+    // Click card header to expand collapsed card, or collapse open card via toggle-btn
+    dash.addEventListener('click', e => {
+      if (window.innerWidth > 640) return
+      if (e.target.closest('.card-search, .delete-list-btn, .card-label')) return
+      const header = e.target.closest('.card-header')
+      if (!header) return
+      const card = header.closest('.card')
+      if (!card) return
+      const lt = card.id.replace('card-', '')
+      if (card.classList.contains('collapsed')) {
+        this._accordionOpen = lt
+        this._applyAccordion()
+      } else if (e.target.closest('.card-toggle-btn')) {
+        // collapse the open card by cycling to next list
+        const others = this.listTypes.filter(t => t !== lt)
+        this._accordionOpen = others[0] || lt
+        this._applyAccordion()
+      }
     })
   }
 }
