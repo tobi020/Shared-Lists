@@ -168,13 +168,15 @@ class ListApp {
 
     let roomId = _getRoomIdFromUrl()
     if (!roomId) {
-      roomId = crypto.randomUUID()
+      // Beim Start vom Home Screen gibt es keine URL-Parameter —
+      // gespeicherte Room-ID aus localStorage verwenden, sonst neue generieren
+      roomId = localStorage.getItem('_listAppRoomId') || crypto.randomUUID()
       _setRoomIdInUrl(roomId)
-      this._roomId = roomId
-      this._pushToFirestore()
-    } else {
-      this._roomId = roomId
     }
+    // Room-ID immer in localStorage speichern (auch für Home-Screen-Starts)
+    localStorage.setItem('_listAppRoomId', roomId)
+    this._roomId = roomId
+    if (!_getRoomIdFromUrl()) this._pushToFirestore()
 
     const roomRef = this._docFn(this._db, FIRESTORE_COLLECTION, roomId)
     this._onSnapshotFn(roomRef, (snap) => {
