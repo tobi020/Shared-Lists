@@ -4,7 +4,7 @@
     {
       "name": "shared-list-app",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "3001"],
+      "runtimeArgs": ["serve.py"],
       "port": 3001
     }
   ]

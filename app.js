@@ -93,7 +93,7 @@ class ListApp {
     this.dropTarget  = null
     this.editing      = null
     this.editPriority = 'low'
-    this._accordionOpen = null  // Track which card is open on mobile
+    this._openLists = new Set()  // Which cards are expanded on mobile
     this._init()
   }
 
@@ -308,6 +308,19 @@ class ListApp {
     this._renderList(listType)
   }
 
+  reorderLists(dragLt, targetLt, above) {
+    const arr = [...this.listTypes]
+    const fromIdx = arr.indexOf(dragLt)
+    if (fromIdx === -1) return
+    arr.splice(fromIdx, 1)
+    const toIdx = arr.indexOf(targetLt)
+    if (toIdx === -1) { arr.push(dragLt) }
+    else { arr.splice(above ? toIdx : toIdx + 1, 0, dragLt) }
+    this.listTypes = arr
+    this._save()
+    this._renderAll()
+  }
+
   renameList(lt, name) {
     this.listNames[lt] = name
     this._save()
@@ -371,14 +384,23 @@ class ListApp {
     }
   }
 
-  _applyAccordion() {
-    if (window.innerWidth > 640) return
-    const open = this._accordionOpen && this.listTypes.includes(this._accordionOpen)
-      ? this._accordionOpen
-      : this.listTypes[0]
-    this._accordionOpen = open
+  _applyOpenState() {
+    // Viewport-Check nicht nötig: .collapsed hat per CSS nur auf ≤640px Wirkung
     this.listTypes.forEach(t => {
-      document.getElementById(`card-${t}`)?.classList.toggle('collapsed', t !== open)
+      document.getElementById(`card-${t}`)?.classList.toggle('collapsed', !this._openLists.has(t))
+    })
+  }
+
+  _scrollToCard(lt) {
+    if (window.innerWidth > 640) return
+    const card = document.getElementById(`card-${lt}`)
+    if (!card) return
+    const dashboard = document.getElementById('dashboard')
+    requestAnimationFrame(() => {
+      const cardTop  = card.getBoundingClientRect().top
+      const dashTop  = dashboard.getBoundingClientRect().top
+      const target   = dashboard.scrollTop + cardTop - dashTop - 8
+      dashboard.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
     })
   }
 
@@ -386,7 +408,7 @@ class ListApp {
     document.getElementById('dashboard').innerHTML =
       this.listTypes.map(lt => this._cardHTML(lt)).join('')
     this.listTypes.forEach(lt => { this._renderList(lt); this._updateCount(lt) })
-    this._applyAccordion()
+    this._applyOpenState()
     document.querySelectorAll('.priority-select').forEach(s => this._syncSelectColor(s))
   }
 
@@ -409,6 +431,7 @@ class ListApp {
   <div class="card-header">
     <div class="card-title-row">
       <div class="card-title">
+        <div class="card-grip" data-drag-card="${lt}" title="Liste verschieben">${ICONS.grip}</div>
         <div class="card-icon">${icon}</div>
         <span class="card-label" data-action="start-rename" data-list="${lt}" title="Klicken zum Umbenennen">${this._getLabel(lt)}</span>
       </div>
@@ -777,27 +800,101 @@ class ListApp {
       })
     })
 
-    // ── Mobile Accordion ───────────────────────────
-    window.addEventListener('resize', () => this._applyAccordion())
+    // ── Mobile open/close ──────────────────────────
+    window.addEventListener('resize', () => this._applyOpenState())
 
-    // Click card header to expand collapsed card, or collapse open card via toggle-btn
+    // Tap collapsed header → expand; tap chevron of open card → collapse
     dash.addEventListener('click', e => {
       if (window.innerWidth > 640) return
-      if (e.target.closest('.card-search, .delete-list-btn, .card-label')) return
+      if (e.target.closest('.card-search, .delete-list-btn, .card-label, .card-grip')) return
       const header = e.target.closest('.card-header')
       if (!header) return
       const card = header.closest('.card')
       if (!card) return
       const lt = card.id.replace('card-', '')
       if (card.classList.contains('collapsed')) {
-        this._accordionOpen = lt
-        this._applyAccordion()
+        this._openLists.add(lt)
+        this._applyOpenState()
+        this._scrollToCard(lt)
       } else if (e.target.closest('.card-toggle-btn')) {
-        // collapse the open card by cycling to next list
-        const others = this.listTypes.filter(t => t !== lt)
-        this._accordionOpen = others[0] || lt
-        this._applyAccordion()
+        this._openLists.delete(lt)
+        this._applyOpenState()
       }
+    })
+
+    this._initCardDrag()
+  }
+
+  // ── Card drag-to-reorder ───────────────────────
+  _initCardDrag() {
+    const dash = document.getElementById('dashboard')
+    let dragLt = null, ghost = null, dropTarget = null
+
+    const cleanup = () => {
+      ghost?.remove(); ghost = null
+      document.querySelectorAll('.card').forEach(c =>
+        c.classList.remove('card-dragging', 'card-drop-above', 'card-drop-below')
+      )
+      dragLt = null; dropTarget = null
+    }
+
+    const markTarget = (card, clientY) => {
+      document.querySelectorAll('.card').forEach(c =>
+        c.classList.remove('card-drop-above', 'card-drop-below')
+      )
+      if (!card || card.id === `card-${dragLt}`) { dropTarget = null; return }
+      const above = clientY < card.getBoundingClientRect().top + card.offsetHeight / 2
+      card.classList.add(above ? 'card-drop-above' : 'card-drop-below')
+      dropTarget = { lt: card.id.replace('card-', ''), above }
+    }
+
+    // ── HTML5 drag (Desktop) ──
+    dash.addEventListener('dragstart', e => {
+      const grip = e.target.closest('[data-drag-card]')
+      if (!grip) return
+      dragLt = grip.dataset.dragCard
+      document.getElementById(`card-${dragLt}`)?.classList.add('card-dragging')
+      e.dataTransfer.effectAllowed = 'move'
+    })
+    dash.addEventListener('dragover', e => {
+      if (!dragLt) return
+      e.preventDefault()
+      markTarget(e.target.closest('.card'), e.clientY)
+    })
+    dash.addEventListener('drop', e => {
+      e.preventDefault()
+      if (dragLt && dropTarget) this.reorderLists(dragLt, dropTarget.lt, dropTarget.above)
+      cleanup()
+    })
+    dash.addEventListener('dragend', cleanup)
+
+    // ── Touch drag (Mobile) ──
+    dash.addEventListener('touchstart', e => {
+      const grip = e.target.closest('[data-drag-card]')
+      if (!grip) return
+      dragLt = grip.dataset.dragCard
+      const card = document.getElementById(`card-${dragLt}`)
+      card?.classList.add('card-dragging')
+      const r = card.getBoundingClientRect()
+      ghost = document.createElement('div')
+      ghost.className = 'card-ghost'
+      ghost.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;`
+      document.body.appendChild(ghost)
+      e.preventDefault()
+    }, { passive: false })
+
+    dash.addEventListener('touchmove', e => {
+      if (!dragLt) return
+      const t = e.touches[0]
+      if (ghost) ghost.style.top = (t.clientY - 24) + 'px'
+      const el = document.elementFromPoint(t.clientX, t.clientY)
+      markTarget(el?.closest('.card'), t.clientY)
+      e.preventDefault()
+    }, { passive: false })
+
+    dash.addEventListener('touchend', e => {
+      if (dragLt && dropTarget) this.reorderLists(dragLt, dropTarget.lt, dropTarget.above)
+      cleanup()
     })
   }
 }
