@@ -328,10 +328,18 @@ class ListApp {
 
   // Schickt einen Push an alle ANDEREN Geräte des Rooms (über die Netlify-Funktion)
   _sendPush(title, body) {
-    const subs = Object.entries(this._pushSubs || {})
-      .filter(([cid]) => cid !== this._clientId)
-      .map(([, v]) => v && v.sub)
-      .filter(s => s && s.endpoint)
+    // Nach Endpunkt deduplizieren und den eigenen Endpunkt ausschließen —
+    // clientId ist pro Session, ein Gerät kann also mehrfach (mit gleichem
+    // Endpunkt) eingetragen sein.
+    const myEndpoint = this._mySubJson && this._mySubJson.endpoint
+    const byEndpoint = new Map()
+    for (const v of Object.values(this._pushSubs || {})) {
+      const s = v && v.sub
+      if (!s || !s.endpoint) continue
+      if (myEndpoint && s.endpoint === myEndpoint) continue
+      byEndpoint.set(s.endpoint, s)
+    }
+    const subs = [...byEndpoint.values()]
     if (!subs.length) return
     fetch(PUSH_ENDPOINT, {
       method: 'POST',
