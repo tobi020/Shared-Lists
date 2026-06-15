@@ -85,6 +85,18 @@ function _setRoomIdInUrl(id) {
   window.history.replaceState({}, '', url.toString())
 }
 
+// Cookies werden auf iOS zwischen Safari und Standalone-PWA geteilt —
+// localStorage hingegen nicht. Daher Room-ID zusätzlich als Cookie speichern.
+function _getRoomIdFromCookie() {
+  const m = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('_listAppRoomId='))
+  return m ? m.split('=')[1] : null
+}
+
+function _setRoomIdCookie(id) {
+  // 1 Jahr Laufzeit, SameSite=Lax damit es bei navigationen mitgesendet wird
+  document.cookie = `_listAppRoomId=${id}; path=/; max-age=31536000; SameSite=Lax`
+}
+
 // ── App ────────────────────────────────────────────────────────────────────
 
 class ListApp {
@@ -186,13 +198,17 @@ class ListApp {
 
     let roomId = _getRoomIdFromUrl()
     if (!roomId) {
-      // Beim Start vom Home Screen gibt es keine URL-Parameter —
-      // gespeicherte Room-ID aus localStorage verwenden, sonst neue generieren
-      roomId = localStorage.getItem('_listAppRoomId') || crypto.randomUUID()
+      // Beim Start vom Home Screen (Standalone-PWA) gibt es keine URL-Parameter.
+      // Cookie zuerst prüfen — wird zwischen Safari und Standalone auf iOS geteilt.
+      // localStorage als Fallback (funktioniert auf anderen Plattformen).
+      roomId = _getRoomIdFromCookie()
+           || localStorage.getItem('_listAppRoomId')
+           || crypto.randomUUID()
       _setRoomIdInUrl(roomId)
     }
-    // Room-ID immer in localStorage speichern (auch für Home-Screen-Starts)
+    // Beide Speicher befüllen: localStorage für Desktop/Android, Cookie für iOS
     localStorage.setItem('_listAppRoomId', roomId)
+    _setRoomIdCookie(roomId)
     this._roomId = roomId
     if (!_getRoomIdFromUrl()) this._pushToFirestore()
 
