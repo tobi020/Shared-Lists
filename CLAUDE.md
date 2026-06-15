@@ -20,20 +20,25 @@ python -m http.server 3001
 
 - **Netlify URL:** https://leafy-piroshki-8d1875.netlify.app
 - **Netlify Site ID:** `6f1e0dcd-cc6a-479e-bea1-8950a6847bc8`
-- **Deploy:** Ordner per Drag & Drop auf app.netlify.com/projects/leafy-piroshki-8d1875/deploys
+- **GitHub-Repo:** `tobi020/Shared-Lists` (Branch `main`)
+- **Deploy:** **Git-Auto-Deploy** — jeder `git push` auf `main` löst automatisch einen Build aus. Netlify installiert `web-push` (package.json) und bündelt die Function. Konfiguration in `netlify.toml` (`publish = "."`, `functions = "netlify/functions"`).
+- **Push-Funktion braucht den Git-Build** (npm install). Reines Drag & Drop deployt die Netlify-Function NICHT korrekt.
 
 ## Architektur
 
-Vier Dateien, keine Dependencies, kein Framework, kein Node.js:
+Statische Seite + eine Netlify-Function. Kein Framework, kein lokaler Build:
 
 | Datei | Rolle |
 |---|---|
 | `index.html` | Shell: Header, `#dashboard`, Modals, Firebase-Init via CDN |
 | `style.css` | Alle Styles — CSS Custom Properties in `:root` |
-| `app.js` | State, Rendering, Events, Firebase-Sync |
-| `firebase-config.js` | Firebase-Credentials (vom User ausgefüllt, nicht committen) |
+| `app.js` | State, Rendering, Events, Firebase-Sync, Push-Abos |
+| `firebase-config.js` | Firebase-Credentials (Web-Keys, öffentlich unbedenklich — committed) |
 | `manifest.json` | PWA-Manifest (installierbar auf iOS/Android) |
-| `sw.js` | Service Worker für PWA |
+| `sw.js` | Service Worker: PWA + `push`/`notificationclick`-Handler |
+| `netlify/functions/send-push.js` | Serverless-Function: verschickt Web-Push via VAPID |
+| `package.json` | Nur für die Function (`web-push`), wird von Netlify installiert |
+| `netlify.toml` | Deploy-Config (publish dir + functions dir) |
 
 ## Firebase / Echtzeit-Sync
 
@@ -53,6 +58,18 @@ Vier Dateien, keine Dependencies, kein Framework, kein Node.js:
 
 ### Dual-Write
 Jede Mutation: erst `localStorage` → dann Firestore (wenn `_syncEnabled && _roomId`).
+
+## Push-Benachrichtigungen (Web Push)
+
+Kostenlos, ohne Firebase Blaze / FCM. Standard Web-Push mit VAPID + Netlify-Function.
+
+- **VAPID-Schlüssel:** öffentlicher Key als `VAPID_PUBLIC_KEY` in `app.js` (darf öffentlich sein); privater Key + `VAPID_SUBJECT` als **Netlify Environment-Variablen** (`VAPID_PRIVATE`, `VAPID_PUBLIC`, `VAPID_SUBJECT`, Scope `functions`). Neu erzeugen: P-256-Keypair, base64url (siehe Commit-Historie).
+- **Abos:** in `rooms/{roomId}` unter `pushSubs` (Map, in den State-Sync eingebettet). Wird in `_pushToFirestore()` mitgeschrieben und in `_applyRemoteState()` übernommen.
+- **Senden:** Das Gerät, das abhakt/hinzufügt, ruft `_sendPush(title, body)` → `POST /.netlify/functions/send-push` mit den Abos der ANDEREN Geräte. Kein Firestore-Trigger nötig. Dedupe nach Endpunkt, eigener Endpunkt wird ausgeschlossen (clientId ist pro Session).
+- **Function** (`send-push.js`): signiert/verschickt via `web-push`, meldet abgelaufene Endpunkte (404/410) zurück → `_pruneExpiredSubs()` räumt auf.
+- **UI:** Glocken-Button `#notify-btn` im Header (`_initPush` / `_toggleNotifications`). Klassen `.active` / `.denied`.
+- **iOS:** Web-Push nur ab iOS 16.4 UND nur als Home-Screen-PWA (nicht im Safari-Tab).
+- **Auslöser:** Push bei `addItem` und beim Abhaken (`completed === true`), NICHT beim Enthaken.
 
 ## `app.js` Struktur
 
