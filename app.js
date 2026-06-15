@@ -383,6 +383,7 @@ class ListApp {
       byEndpoint.set(s.endpoint, s)
     }
     const subs = [...byEndpoint.values()]
+    console.info(`[Push] Targets: ${subs.length}, all subs in room: ${Object.keys(this._pushSubs || {}).length}`)
     if (!subs.length) return
     fetch(PUSH_ENDPOINT, {
       method: 'POST',
@@ -392,13 +393,18 @@ class ListApp {
         payload: { title: 'Holz&Stein', body, url: window.location.href, tag: this._roomId || 'holz-stein' },
       }),
     })
-      .then(r => (r.ok ? r.json() : null))
+      .then(r => {
+        if (!r.ok) { console.error('[Push] Function error:', r.status); return null }
+        return r.json()
+      })
       .then(res => {
-        if (res && Array.isArray(res.expired) && res.expired.length) {
+        if (!res) return
+        console.info('[Push] Sent:', res.sent, '— Expired:', res.expired)
+        if (Array.isArray(res.expired) && res.expired.length) {
           this._pruneExpiredSubs(res.expired)
         }
       })
-      .catch(() => { /* offline oder lokal ohne Funktion — ignorieren */ })
+      .catch(err => console.warn('[Push] Fetch failed (offline or local?):', err.message))
   }
 
   _pruneExpiredSubs(endpoints) {
