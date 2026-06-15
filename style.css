@@ -885,6 +885,9 @@ body {
   .card-toggle-btn .chevron-icon { transition: transform 0.25s ease; }
   .card.collapsed .card-toggle-btn .chevron-icon { transform: rotate(-90deg); }
 
+  /* iOS: verhindert Auto-Zoom bei Input-Fokus (tritt auf bei font-size < 16px) */
+  input, select, textarea { font-size: 16px !important; }
+
   /* Kompaktere Kartenköpfe */
   .card-header { padding: 0.55rem 0.75rem 0.5rem; }
   .card-title-row { margin-bottom: 0.4rem; }
@@ -945,6 +948,42 @@ body {
   color: var(--text);
   border-color: var(--border-hover);
   background: rgba(255,255,255,0.04);
+}
+
+/* ── Notify (Push) Button ─────────────────────── */
+.notify-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-muted);
+  padding: 0.375rem 0.5rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--ease), border-color var(--ease), background var(--ease);
+}
+
+.notify-btn:hover {
+  color: var(--text);
+  border-color: var(--border-hover);
+  background: rgba(255,255,255,0.04);
+}
+
+.notify-btn .bell-on  { display: none; }
+.notify-btn .bell-off { display: block; }
+
+.notify-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.notify-btn.active .bell-on  { display: block; }
+.notify-btn.active .bell-off { display: none; }
+
+.notify-btn.denied {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ── Sync Indicator ───────────────────────────── */

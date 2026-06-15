@@ -1,0 +1,10 @@
+# Netlify-Konfiguration
+# Statische Seite (keine Build-Schritt), Functions in netlify/functions.
+# Netlify erkennt die package.json und installiert web-push automatisch.
+
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"

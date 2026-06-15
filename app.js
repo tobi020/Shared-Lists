@@ -55,6 +55,20 @@ const LIST_TYPES = ['todo', 'kochliste', 'watchlist', 'date-ideen']
 const STORAGE_KEY = 'claude-list-app-v1'
 const FIRESTORE_COLLECTION = 'rooms'
 
+// Öffentlicher VAPID-Schlüssel (darf im Client stehen — der private liegt nur
+// als Env-Var in der Netlify-Funktion). Endpunkt der Push-Funktion:
+const VAPID_PUBLIC_KEY = 'BIzaMgivZsLtIqYmsjAbU9De2QUFgbOuZT4ZwtHvDlvxfxxl2uDv8CXbumbR_l-7Dr4VJkLVaj03lHCqKu6k5dE'
+const PUSH_ENDPOINT = '/.netlify/functions/send-push'
+
+function _urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const raw = atob(base64)
+  const out = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i)
+  return out
+}
+
 function _getClientId() {
   let id = sessionStorage.getItem('_listAppClientId')
   if (!id) { id = crypto.randomUUID(); sessionStorage.setItem('_listAppClientId', id) }
@@ -94,6 +108,8 @@ class ListApp {
     this.editing      = null
     this.editPriority = 'low'
     this._openLists = new Set()  // Which cards are expanded on mobile
+    this._pushSubs  = {}         // clientId → { sub, ts } (in Firestore gespiegelt)
+    this._mySubJson = null       // eigenes Push-Abo (zum Wiederherstellen)
     this._init()
   }
 
@@ -150,6 +166,7 @@ class ListApp {
       listTypes: this.listTypes,
       listNames: this.listNames,
       lists: this.lists,
+      pushSubs: this._pushSubs || {},
       _writtenBy: this._clientId,
       updatedAt: this._serverTsFn(),
     }).then(() => {
@@ -201,6 +218,13 @@ class ListApp {
       lists[lt] = Array.isArray(data.lists[lt]) ? data.lists[lt] : []
     }
     this.lists = lists
+    // Push-Abos der anderen Geräte übernehmen; eigenes Abo nicht verlieren
+    if (data.pushSubs && typeof data.pushSubs === 'object') {
+      this._pushSubs = data.pushSubs
+      if (this._mySubJson && !this._pushSubs[this._clientId]) {
+        this._pushSubs[this._clientId] = { sub: this._mySubJson, ts: Date.now() }
+      }
+    }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         listTypes: this.listTypes,
@@ -218,6 +242,127 @@ class ListApp {
     el.className = `sync-indicator ${status}`
     const labels = { syncing: 'Speichern…', synced: 'Sync aktiv', error: 'Sync-Fehler' }
     el.title = labels[status] || 'Sync-Status'
+  }
+
+  // ── Push-Benachrichtigungen ────────────────────
+
+  async _initPush() {
+    const btn = document.getElementById('notify-btn')
+    if (!btn) return
+    const supported = ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window)
+    if (!supported) { btn.style.display = 'none'; return }
+
+    btn.addEventListener('click', () => this._toggleNotifications())
+
+    if (Notification.permission === 'denied') { this._updateNotifyBtn('denied'); return }
+    try {
+      const reg = await navigator.serviceWorker.ready
+      const existing = await reg.pushManager.getSubscription()
+      if (existing && Notification.permission === 'granted') {
+        this._storeOwnSub(existing)
+        this._updateNotifyBtn('active')
+      } else {
+        this._updateNotifyBtn('inactive')
+      }
+    } catch {
+      this._updateNotifyBtn('inactive')
+    }
+  }
+
+  async _toggleNotifications() {
+    if (Notification.permission === 'denied') {
+      alert('Benachrichtigungen sind im Browser blockiert. Bitte in den Browser-/Systemeinstellungen für diese Seite erlauben.')
+      return
+    }
+    let reg
+    try { reg = await navigator.serviceWorker.ready } catch { return }
+    const existing = await reg.pushManager.getSubscription()
+    if (existing) {
+      try { await existing.unsubscribe() } catch { /* ignore */ }
+      this._mySubJson = null
+      if (this._pushSubs[this._clientId]) {
+        delete this._pushSubs[this._clientId]
+        this._pushToFirestore()
+      }
+      this._updateNotifyBtn('inactive')
+      return
+    }
+    const perm = await Notification.requestPermission()
+    if (perm !== 'granted') {
+      this._updateNotifyBtn(perm === 'denied' ? 'denied' : 'inactive')
+      return
+    }
+    try {
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      })
+      this._storeOwnSub(sub)
+      this._pushToFirestore()
+      this._updateNotifyBtn('active')
+    } catch (e) {
+      console.error('[Push] subscribe failed:', e)
+      this._updateNotifyBtn('inactive')
+    }
+  }
+
+  _storeOwnSub(sub) {
+    const json = sub.toJSON ? sub.toJSON() : sub
+    this._mySubJson = json
+    if (!this._pushSubs) this._pushSubs = {}
+    this._pushSubs[this._clientId] = { sub: json, ts: Date.now() }
+  }
+
+  _updateNotifyBtn(state) {
+    const btn = document.getElementById('notify-btn')
+    if (!btn) return
+    btn.classList.toggle('active', state === 'active')
+    btn.classList.toggle('denied', state === 'denied')
+    const titles = {
+      active:   'Benachrichtigungen aktiv — zum Deaktivieren tippen',
+      inactive: 'Push-Benachrichtigungen aktivieren',
+      denied:   'Benachrichtigungen im Browser blockiert',
+    }
+    btn.title = titles[state] || titles.inactive
+  }
+
+  // Schickt einen Push an alle ANDEREN Geräte des Rooms (über die Netlify-Funktion)
+  _sendPush(title, body) {
+    const subs = Object.entries(this._pushSubs || {})
+      .filter(([cid]) => cid !== this._clientId)
+      .map(([, v]) => v && v.sub)
+      .filter(s => s && s.endpoint)
+    if (!subs.length) return
+    fetch(PUSH_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subscriptions: subs,
+        payload: { title, body, url: window.location.href, tag: this._roomId || 'holz-stein' },
+      }),
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(res => {
+        if (res && Array.isArray(res.expired) && res.expired.length) {
+          this._pruneExpiredSubs(res.expired)
+        }
+      })
+      .catch(() => { /* offline oder lokal ohne Funktion — ignorieren */ })
+  }
+
+  _pruneExpiredSubs(endpoints) {
+    const dead = new Set(endpoints)
+    let changed = false
+    for (const [cid, v] of Object.entries(this._pushSubs || {})) {
+      if (v && v.sub && dead.has(v.sub.endpoint)) { delete this._pushSubs[cid]; changed = true }
+    }
+    if (changed) this._pushToFirestore()
+  }
+
+  _listLabel(listType) {
+    return this.listNames[listType]
+      || (LIST_CONFIGS[listType] && LIST_CONFIGS[listType].label)
+      || listType
   }
 
   _copyShareLink() {
@@ -263,15 +408,44 @@ class ListApp {
     this._save()
     this._renderList(listType)
     this._updateCount(listType)
+    this._playSound('add')
+    this._sendPush(this._listLabel(listType), `➕ ${text.trim()}`)
   }
 
   toggleItem(listType, id) {
+    // FLIP: Positionen vor dem Re-render merken
+    const firstTops = {}
+    document.querySelectorAll(`#list-${listType} .list-item`).forEach(el => {
+      firstTops[el.dataset.id] = el.getBoundingClientRect().top
+    })
+
     const item = this.lists[listType].find(i => i.id === id)
     if (!item) return
     item.completed = !item.completed
+    this._playSound(item.completed ? 'check' : 'uncheck')
+    if (item.completed) this._sendPush(this._listLabel(listType), `✓ ${item.text}`)
     this._save()
     this._renderList(listType)
     this._updateCount(listType)
+
+    // FLIP: von alter zu neuer Position animieren
+    requestAnimationFrame(() => {
+      document.querySelectorAll(`#list-${listType} .list-item`).forEach(el => {
+        const first = firstTops[el.dataset.id]
+        if (first === undefined) return
+        const dy = first - el.getBoundingClientRect().top
+        if (Math.abs(dy) < 2) return
+        el.style.animation = 'none'
+        el.style.transform = `translateY(${dy}px)`
+        el.style.transition = 'none'
+        el.offsetHeight // reflow erzwingen
+        el.style.transition = 'transform 0.38s cubic-bezier(0.4,0,0.2,1)'
+        el.style.transform = ''
+        el.addEventListener('transitionend', () => {
+          el.style.cssText = ''
+        }, { once: true })
+      })
+    })
   }
 
   deleteItem(listType, id) {
@@ -467,12 +641,14 @@ class ListApp {
 
     const searchActive = !!(this.globalSearch || this._localSearch(listType))
     const items = this._filtered(listType)
+    // Abgehakte Items immer ans Ende
+    const sorted = items.slice().sort((a, b) => Number(a.completed) - Number(b.completed))
 
-    if (items.length === 0) {
+    if (sorted.length === 0) {
       const cfg = this._getConfig(listType)
       el.innerHTML = `<div class="empty-state">${ICONS.empty}<p>${searchActive ? cfg.emptySearchText : cfg.emptyText}</p></div>`
     } else {
-      el.innerHTML = items.map(item => this._itemHTML(item, searchActive)).join('')
+      el.innerHTML = sorted.map(item => this._itemHTML(item, searchActive)).join('')
     }
 
     const completedCount = this.lists[listType].filter(i => i.completed).length
@@ -661,11 +837,60 @@ class ListApp {
     this.dropTarget = null
   }
 
+  // ── Audio ──────────────────────────────────────
+
+  _initAudio() {
+    this._audioCtx = null
+    const unlock = () => {
+      if (this._audioCtx) return
+      const Ctx = window.AudioContext || window.webkitAudioContext
+      if (!Ctx) return
+      this._audioCtx = new Ctx()
+    }
+    document.addEventListener('touchstart', unlock, { passive: true })
+    document.addEventListener('click', unlock)
+  }
+
+  _playSound(type) {
+    const ctx = this._audioCtx
+    if (!ctx) return
+    if (ctx.state === 'suspended') ctx.resume()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    const t = ctx.currentTime
+    if (type === 'check') {
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(520, t)
+      osc.frequency.exponentialRampToValueAtTime(880, t + 0.08)
+      gain.gain.setValueAtTime(0.12, t)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22)
+      osc.start(t); osc.stop(t + 0.22)
+    } else if (type === 'uncheck') {
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(520, t)
+      osc.frequency.exponentialRampToValueAtTime(260, t + 0.12)
+      gain.gain.setValueAtTime(0.08, t)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15)
+      osc.start(t); osc.stop(t + 0.15)
+    } else if (type === 'add') {
+      osc.type = 'triangle'
+      osc.frequency.setValueAtTime(660, t)
+      osc.frequency.exponentialRampToValueAtTime(880, t + 0.06)
+      gain.gain.setValueAtTime(0.09, t)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12)
+      osc.start(t); osc.stop(t + 0.12)
+    }
+  }
+
   // ── Init & Event Binding ───────────────────────
 
   _init() {
+    this._initAudio()
     this._renderAll()
     this._initFirebase()
+    this._initPush()
 
     const dash = document.getElementById('dashboard')
 
