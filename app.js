@@ -383,7 +383,8 @@ class ListApp {
       byEndpoint.set(s.endpoint, s)
     }
     const subs = [...byEndpoint.values()]
-    console.info(`[Push] Targets: ${subs.length}, all subs in room: ${Object.keys(this._pushSubs || {}).length}`)
+    const allSubs = Object.values(this._pushSubs || {})
+    console.info(`[Push] Room: ${this._roomId} | Targets: ${subs.length} | All subs: ${allSubs.length} | Names: ${allSubs.map(v => v && v.name || '?').join(', ')}`)
     if (!subs.length) return
     fetch(PUSH_ENDPOINT, {
       method: 'POST',
