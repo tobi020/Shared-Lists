@@ -982,8 +982,23 @@ body {
 .notify-btn.active .bell-off { display: none; }
 
 .notify-btn.denied {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
+}
+
+.notify-btn.ios-hint {
+  opacity: 0.5;
+}
+
+.notify-btn.pending {
+  opacity: 0.6;
+  cursor: wait;
+  animation: bell-pulse 1s ease-in-out infinite;
+}
+
+@keyframes bell-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1;   }
 }
 
 /* ── Sync Indicator ───────────────────────────── */

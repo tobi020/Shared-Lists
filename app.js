@@ -110,6 +110,7 @@ class ListApp {
     this._openLists = new Set()  // Which cards are expanded on mobile
     this._pushSubs  = {}         // clientId → { sub, ts } (in Firestore gespiegelt)
     this._mySubJson = null       // eigenes Push-Abo (zum Wiederherstellen)
+    this._myName    = localStorage.getItem('_listAppUsername') || ''
     this._init()
   }
 
@@ -249,7 +250,18 @@ class ListApp {
   async _initPush() {
     const btn = document.getElementById('notify-btn')
     if (!btn) return
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     const supported = ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window)
+
+    // iOS Safari (kein PWA): Glocke anzeigen, aber erklären wie's geht
+    if (!supported && isIOS) {
+      btn.addEventListener('click', () => {
+        alert('Benachrichtigungen funktionieren auf dem iPhone nur als App.\n\n1. Öffne diese Seite in Safari\n2. Teilen-Symbol → „Zum Home-Bildschirm"\n3. App von dort starten\n4. Glocke antippen')
+      })
+      this._updateNotifyBtn('ios-hint')
+      return
+    }
     if (!supported) { btn.style.display = 'none'; return }
 
     btn.addEventListener('click', () => this._toggleNotifications())
@@ -271,27 +283,40 @@ class ListApp {
 
   async _toggleNotifications() {
     if (Notification.permission === 'denied') {
-      alert('Benachrichtigungen sind im Browser blockiert. Bitte in den Browser-/Systemeinstellungen für diese Seite erlauben.')
+      alert('Benachrichtigungen sind für diese Seite blockiert.\n\nIn den Browser-Einstellungen für diese Seite erlauben.')
       return
     }
     let reg
     try { reg = await navigator.serviceWorker.ready } catch { return }
     const existing = await reg.pushManager.getSubscription()
+
+    // Bereits abonniert → abmelden
     if (existing) {
       try { await existing.unsubscribe() } catch { /* ignore */ }
       this._mySubJson = null
-      if (this._pushSubs[this._clientId]) {
+      if (this._pushSubs && this._pushSubs[this._clientId]) {
         delete this._pushSubs[this._clientId]
         this._pushToFirestore()
       }
       this._updateNotifyBtn('inactive')
       return
     }
+
+    // Erlaubnis anfragen — Button zeigt Ladezustand
+    this._updateNotifyBtn('pending')
     const perm = await Notification.requestPermission()
     if (perm !== 'granted') {
       this._updateNotifyBtn(perm === 'denied' ? 'denied' : 'inactive')
       return
     }
+
+    // Name abfragen falls noch nicht gesetzt
+    if (!this._myName) {
+      const name = prompt('Dein Name (erscheint in Benachrichtigungen):') || ''
+      this._myName = name.trim() || 'Jemand'
+      localStorage.setItem('_listAppUsername', this._myName)
+    }
+
     try {
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
@@ -310,27 +335,29 @@ class ListApp {
     const json = sub.toJSON ? sub.toJSON() : sub
     this._mySubJson = json
     if (!this._pushSubs) this._pushSubs = {}
-    this._pushSubs[this._clientId] = { sub: json, ts: Date.now() }
+    this._pushSubs[this._clientId] = { sub: json, ts: Date.now(), name: this._myName || 'Jemand' }
   }
 
   _updateNotifyBtn(state) {
     const btn = document.getElementById('notify-btn')
     if (!btn) return
-    btn.classList.toggle('active', state === 'active')
-    btn.classList.toggle('denied', state === 'denied')
+    btn.classList.toggle('active',    state === 'active')
+    btn.classList.toggle('denied',    state === 'denied')
+    btn.classList.toggle('pending',   state === 'pending')
+    btn.classList.toggle('ios-hint',  state === 'ios-hint')
     const titles = {
       active:   'Benachrichtigungen aktiv — zum Deaktivieren tippen',
-      inactive: 'Push-Benachrichtigungen aktivieren',
-      denied:   'Benachrichtigungen im Browser blockiert',
+      inactive: 'Benachrichtigungen aktivieren',
+      denied:   'Benachrichtigungen blockiert — in Browser-Einstellungen erlauben',
+      pending:  'Warte auf Erlaubnis…',
+      'ios-hint': 'Für Push: App zum Home-Bildschirm hinzufügen',
     }
     btn.title = titles[state] || titles.inactive
   }
 
-  // Schickt einen Push an alle ANDEREN Geräte des Rooms (über die Netlify-Funktion)
-  _sendPush(title, body) {
-    // Nach Endpunkt deduplizieren und den eigenen Endpunkt ausschließen —
-    // clientId ist pro Session, ein Gerät kann also mehrfach (mit gleichem
-    // Endpunkt) eingetragen sein.
+  // Schickt einen Push an alle ANDEREN Geräte des Rooms.
+  // body enthält bereits den fertigen Satz mit Name.
+  _sendPush(body) {
     const myEndpoint = this._mySubJson && this._mySubJson.endpoint
     const byEndpoint = new Map()
     for (const v of Object.values(this._pushSubs || {})) {
@@ -346,7 +373,7 @@ class ListApp {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         subscriptions: subs,
-        payload: { title, body, url: window.location.href, tag: this._roomId || 'holz-stein' },
+        payload: { title: 'Holz&Stein', body, url: window.location.href, tag: this._roomId || 'holz-stein' },
       }),
     })
       .then(r => (r.ok ? r.json() : null))
@@ -417,7 +444,8 @@ class ListApp {
     this._renderList(listType)
     this._updateCount(listType)
     this._playSound('add')
-    this._sendPush(this._listLabel(listType), `➕ ${text.trim()}`)
+    const name = this._myName || 'Jemand'
+    this._sendPush(`${name} hat „${text.trim()}" in ${this._listLabel(listType)} hinzugefügt.`)
   }
 
   toggleItem(listType, id) {
@@ -431,7 +459,10 @@ class ListApp {
     if (!item) return
     item.completed = !item.completed
     this._playSound(item.completed ? 'check' : 'uncheck')
-    if (item.completed) this._sendPush(this._listLabel(listType), `✓ ${item.text}`)
+    if (item.completed) {
+      const name = this._myName || 'Jemand'
+      this._sendPush(`${name} hat „${item.text}" in ${this._listLabel(listType)} abgehakt.`)
+    }
     this._save()
     this._renderList(listType)
     this._updateCount(listType)
