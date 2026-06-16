@@ -395,7 +395,10 @@ class ListApp {
       }),
     })
       .then(r => {
-        if (!r.ok) { console.error('[Push] Function error:', r.status); return null }
+        if (!r.ok) {
+          r.text().then(t => console.error('[Push] Function error:', r.status, t))
+          return null
+        }
         return r.json()
       })
       .then(res => {
