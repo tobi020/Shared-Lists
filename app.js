@@ -20,6 +20,10 @@ const ICONS = {
   dots: `<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>`,
   folder: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="40" height="40"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>`,
   arrowLeft: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
+  sun: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`,
+  moon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`,
+  bellOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>`,
+  bellOn: `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0" fill="none"/></svg>`,
 }
 
 // ── Default list configuration ─────────────────────────────────────────────
@@ -299,44 +303,43 @@ class ListApp {
   // ── Push-Benachrichtigungen ────────────────────
 
   async _initPush() {
-    const btn = document.getElementById('notify-btn')
-    if (!btn) return
-
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     const supported = ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window)
 
-    // iOS Safari (kein PWA): Glocke anzeigen, aber erklären wie's geht
-    if (!supported && isIOS) {
-      btn.addEventListener('click', () => {
-        alert('Benachrichtigungen funktionieren auf dem iPhone nur als App.\n\n1. Öffne diese Seite in Safari\n2. Teilen-Symbol → „Zum Home-Bildschirm"\n3. App von dort starten\n4. Glocke antippen')
-      })
-      this._updateNotifyBtn('ios-hint')
-      return
-    }
-    if (!supported) { btn.style.display = 'none'; return }
+    // iOS Safari (kein PWA): Menüpunkt zeigen, aber erklären wie's geht
+    if (!supported && isIOS) { this._notifySupported = true; this._setNotifyState('ios-hint'); return }
+    if (!supported) { this._notifySupported = false; this._setNotifyState('unsupported'); return }
+    this._notifySupported = true
 
-    btn.addEventListener('click', () => this._toggleNotifications())
-
-    if (Notification.permission === 'denied') { this._updateNotifyBtn('denied'); return }
+    if (Notification.permission === 'denied') { this._setNotifyState('denied'); return }
     try {
       const reg = await navigator.serviceWorker.ready
       const existing = await reg.pushManager.getSubscription()
       if (existing && Notification.permission === 'granted') {
         this._storeOwnSub(existing)
-        this._updateNotifyBtn('active')
+        this._setNotifyState('active')
       } else {
-        this._updateNotifyBtn('inactive')
+        this._setNotifyState('inactive')
       }
     } catch {
-      this._updateNotifyBtn('inactive')
+      this._setNotifyState('inactive')
     }
   }
 
-  async _toggleNotifications() {
-    if (Notification.permission === 'denied') {
+  // Wird per Klick auf den Menüpunkt "Benachrichtigungen" im Einstellungen-Menü ausgelöst.
+  _onNotifyMenuClick() {
+    if (this._notifyState === 'ios-hint') {
+      alert('Benachrichtigungen funktionieren auf dem iPhone nur als App.\n\n1. Öffne diese Seite in Safari\n2. Teilen-Symbol → „Zum Home-Bildschirm"\n3. App von dort starten\n4. Glocke antippen')
+      return
+    }
+    if (this._notifyState === 'denied') {
       alert('Benachrichtigungen sind für diese Seite blockiert.\n\nIn den Browser-Einstellungen für diese Seite erlauben.')
       return
     }
+    this._toggleNotifications()
+  }
+
+  async _toggleNotifications() {
     let reg
     try { reg = await navigator.serviceWorker.ready } catch { return }
     const existing = await reg.pushManager.getSubscription()
@@ -349,15 +352,15 @@ class ListApp {
         delete this._pushSubs[this._clientId]
         this._pushToFirestore()
       }
-      this._updateNotifyBtn('inactive')
+      this._setNotifyState('inactive')
       return
     }
 
-    // Erlaubnis anfragen — Button zeigt Ladezustand
-    this._updateNotifyBtn('pending')
+    // Erlaubnis anfragen — Menüpunkt zeigt Ladezustand
+    this._setNotifyState('pending')
     const perm = await Notification.requestPermission()
     if (perm !== 'granted') {
-      this._updateNotifyBtn(perm === 'denied' ? 'denied' : 'inactive')
+      this._setNotifyState(perm === 'denied' ? 'denied' : 'inactive')
       return
     }
 
@@ -375,10 +378,10 @@ class ListApp {
       })
       this._storeOwnSub(sub)
       this._pushToFirestore()
-      this._updateNotifyBtn('active')
+      this._setNotifyState('active')
     } catch (e) {
       console.error('[Push] subscribe failed:', e)
-      this._updateNotifyBtn('inactive')
+      this._setNotifyState('inactive')
     }
   }
 
@@ -389,21 +392,20 @@ class ListApp {
     this._pushSubs[this._clientId] = { sub: json, ts: Date.now(), name: this._myName || 'Jemand' }
   }
 
-  _updateNotifyBtn(state) {
-    const btn = document.getElementById('notify-btn')
-    if (!btn) return
-    btn.classList.toggle('active',    state === 'active')
-    btn.classList.toggle('denied',    state === 'denied')
-    btn.classList.toggle('pending',   state === 'pending')
-    btn.classList.toggle('ios-hint',  state === 'ios-hint')
-    const titles = {
-      active:   'Benachrichtigungen aktiv — zum Deaktivieren tippen',
-      inactive: 'Benachrichtigungen aktivieren',
-      denied:   'Benachrichtigungen blockiert — in Browser-Einstellungen erlauben',
-      pending:  'Warte auf Erlaubnis…',
-      'ios-hint': 'Für Push: App zum Home-Bildschirm hinzufügen',
+  _setNotifyState(state) {
+    this._notifyState = state
+    this._refreshSettingsMenu()
+  }
+
+  _notifyLabel() {
+    const labels = {
+      active:     'Benachrichtigungen deaktivieren',
+      inactive:   'Benachrichtigungen aktivieren',
+      denied:     'Benachrichtigungen blockiert',
+      pending:    'Warte auf Erlaubnis…',
+      'ios-hint': 'Für Push: Zum Home-Bildschirm hinzufügen',
     }
-    btn.title = titles[state] || titles.inactive
+    return labels[this._notifyState] || labels.inactive
   }
 
   // Schickt einen Push an alle ANDEREN Geräte des Rooms.
@@ -474,7 +476,7 @@ class ListApp {
     }
     const flash = () => {
       const prev = btn.innerHTML
-      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg> Kopiert!`
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg> <span>Kopiert!</span>`
       setTimeout(() => { btn.innerHTML = prev }, 1800)
     }
     const fallback = (text) => { prompt('Link kopieren:', text) }
@@ -642,6 +644,27 @@ class ListApp {
     })
   }
 
+  // ── Modal: Neue Liste ───────────────────────────
+
+  _openAddListModal() {
+    const input = document.getElementById('add-list-name')
+    input.value = ''
+    document.getElementById('add-list-backdrop').classList.add('open')
+    setTimeout(() => input.focus(), 60)
+  }
+
+  _closeAddListModal() {
+    document.getElementById('add-list-backdrop').classList.remove('open')
+  }
+
+  _confirmAddList() {
+    const input = document.getElementById('add-list-name')
+    const name = input.value.trim()
+    if (!name) { input.focus(); return }
+    this.addList(name)
+    this._closeAddListModal()
+  }
+
   // ── Projekte ────────────────────────────────────
 
   addProject(name) {
@@ -649,6 +672,25 @@ class ListApp {
     this.projects.push({ id, name, image: null, listTypes: [] })
     this._save()
     this._renderAll()
+  }
+
+  _openAddProjectModal() {
+    const input = document.getElementById('add-project-name')
+    input.value = ''
+    document.getElementById('add-project-backdrop').classList.add('open')
+    setTimeout(() => input.focus(), 60)
+  }
+
+  _closeAddProjectModal() {
+    document.getElementById('add-project-backdrop').classList.remove('open')
+  }
+
+  _confirmAddProject() {
+    const input = document.getElementById('add-project-name')
+    const name = input.value.trim()
+    if (!name) { input.focus(); return }
+    this.addProject(name)
+    this._closeAddProjectModal()
   }
 
   renameProject(id, name) {
@@ -776,16 +818,8 @@ class ListApp {
     this.listTypes.forEach(lt => { this._renderList(lt); this._updateCount(lt) })
     this._applyOpenState()
     this._applyAddPhotoStates()
-    this._updateChrome()
     this._hydrateImages(dash)
     document.querySelectorAll('.priority-select').forEach(s => this._syncSelectColor(s))
-  }
-
-  _updateChrome() {
-    const addListBtn = document.getElementById('add-list-btn')
-    const addProjectBtn = document.getElementById('add-project-btn')
-    if (addListBtn) addListBtn.textContent = this._currentProjectId ? '+ Liste hinzufügen' : '+ Neue Liste'
-    if (addProjectBtn) addProjectBtn.classList.toggle('hidden', !!this._currentProjectId)
   }
 
   // ── Projekte: Rendering ─────────────────────────
@@ -894,6 +928,103 @@ class ListApp {
       this._projectMenuOutsideHandler = null
     }
     if (this._projectMenuEl) { this._projectMenuEl.remove(); this._projectMenuEl = null }
+  }
+
+  // ── Einstellungen-Menü (Header) ─────────────────
+  // Bündelt Push-Benachrichtigungen + Hell-/Dunkelmodus hinter einem Icon,
+  // damit der Header auf Mobile nicht überläuft.
+
+  _settingsMenuHTML() {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light'
+    const notifyRow = this._notifySupported
+      ? `<button data-sm="notify" ${['pending'].includes(this._notifyState) ? 'disabled' : ''}>${this._notifyState === 'active' ? ICONS.bellOn : ICONS.bellOff} <span>${this._notifyLabel()}</span></button>`
+      : ''
+    const themeRow = `<button data-sm="theme">${isLight ? ICONS.moon : ICONS.sun} <span>${isLight ? 'Dunkelmodus aktivieren' : 'Hellmodus aktivieren'}</span></button>`
+    return notifyRow + themeRow
+  }
+
+  _openSettingsMenu(anchor) {
+    this._closeProjectMenu()
+    this._closeAddMenu()
+    const menu = document.createElement('div')
+    menu.className = 'project-menu'
+    menu.innerHTML = this._settingsMenuHTML()
+    document.body.appendChild(menu)
+    const r = anchor.getBoundingClientRect()
+    const menuWidth = 240
+    menu.style.top = Math.round(r.bottom + 6 + window.scrollY) + 'px'
+    menu.style.left = Math.round(Math.min(r.left, window.innerWidth - menuWidth - 8)) + 'px'
+    this._settingsMenuEl = menu
+    this._settingsMenuAnchor = anchor
+
+    menu.addEventListener('click', e => {
+      const btn = e.target.closest('[data-sm]')
+      if (!btn || btn.disabled) return
+      if (btn.dataset.sm === 'notify') this._onNotifyMenuClick()
+      if (btn.dataset.sm === 'theme')  { this._toggleThemeState(); this._closeSettingsMenu() }
+    })
+
+    setTimeout(() => {
+      document.addEventListener('click', this._settingsMenuOutsideHandler = (e) => {
+        if (this._settingsMenuEl && !this._settingsMenuEl.contains(e.target) && e.target !== anchor) this._closeSettingsMenu()
+      }, { capture: true })
+    }, 0)
+  }
+
+  _closeSettingsMenu() {
+    if (this._settingsMenuOutsideHandler) {
+      document.removeEventListener('click', this._settingsMenuOutsideHandler, { capture: true })
+      this._settingsMenuOutsideHandler = null
+    }
+    if (this._settingsMenuEl) { this._settingsMenuEl.remove(); this._settingsMenuEl = null }
+  }
+
+  // Aktualisiert das offene Menü in-place (z.B. nach Berechtigungs-Antwort),
+  // ohne es zu schließen.
+  _refreshSettingsMenu() {
+    if (this._settingsMenuEl) this._settingsMenuEl.innerHTML = this._settingsMenuHTML()
+  }
+
+  // ── "+"-Menü (Header): Neue Liste / Neues Projekt ───────────────────────
+
+  _onAddMenuClick(anchor) {
+    if (this._currentProjectId) { this._openAddListModal(); return }
+    this._closeProjectMenu()
+    this._closeSettingsMenu()
+    const menu = document.createElement('div')
+    menu.className = 'project-menu'
+    menu.innerHTML = `
+      <button data-am="list">${ICONS.list} <span>Neue Liste</span></button>
+      <button data-am="project">${ICONS.folder} <span>Neues Projekt</span></button>
+    `
+    document.body.appendChild(menu)
+    const r = anchor.getBoundingClientRect()
+    const menuWidth = 190
+    menu.style.top = Math.round(r.bottom + 6 + window.scrollY) + 'px'
+    menu.style.left = Math.round(Math.min(r.left, window.innerWidth - menuWidth - 8)) + 'px'
+    this._addMenuEl = menu
+
+    menu.addEventListener('click', e => {
+      const btn = e.target.closest('[data-am]')
+      if (!btn) return
+      this._closeAddMenu()
+      if (btn.dataset.am === 'list')    this._openAddListModal()
+      if (btn.dataset.am === 'project') this._openAddProjectModal()
+    })
+
+    setTimeout(() => {
+      document.addEventListener('click', this._addMenuOutsideHandler = (e) => {
+        if (this._addMenuEl && !this._addMenuEl.contains(e.target) && e.target !== anchor) this._closeAddMenu()
+      }, { capture: true })
+    }, 0)
+  }
+
+  _closeAddMenu() {
+    if (this._addMenuOutsideHandler) {
+      document.removeEventListener('click', this._addMenuOutsideHandler, { capture: true })
+      this._addMenuOutsideHandler = null
+    }
+    if (this._addMenuEl) { this._addMenuEl.remove(); this._addMenuEl = null }
   }
 
   _renderAddPhotoBtn(btn, pending) {
@@ -1459,21 +1590,20 @@ class ListApp {
   // ── Theme (Hell-/Dunkelmodus) ──────────────────
 
   _initTheme() {
-    const theme = localStorage.getItem('_listAppTheme') || 'dark'
-    this._applyTheme(theme)
-    document.getElementById('theme-btn')?.addEventListener('click', () => {
-      const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'
-      this._applyTheme(next)
-      localStorage.setItem('_listAppTheme', next)
-    })
+    this._applyTheme(localStorage.getItem('_listAppTheme') || 'dark')
   }
 
   _applyTheme(theme) {
     if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light')
     else document.documentElement.removeAttribute('data-theme')
-    document.getElementById('theme-btn')?.classList.toggle('light', theme === 'light')
     const meta = document.querySelector('meta[name="theme-color"]')
     if (meta) meta.setAttribute('content', theme === 'light' ? '#f7f7f5' : '#0a0a0a')
+  }
+
+  _toggleThemeState() {
+    const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'
+    this._applyTheme(next)
+    localStorage.setItem('_listAppTheme', next)
   }
 
   // ── Init & Event Binding ───────────────────────
@@ -1575,60 +1705,32 @@ class ListApp {
     confirmBackdrop.addEventListener('keydown', e => { if (e.key === 'Escape') this._closeConfirm() })
 
     // ── Add list modal
-    const addBackdrop = document.getElementById('add-list-backdrop')
-    const addInput    = document.getElementById('add-list-name')
-
-    const openAddModal = () => {
-      addInput.value = ''
-      addBackdrop.classList.add('open')
-      setTimeout(() => addInput.focus(), 60)
-    }
-    const closeAddModal = () => {
-      addBackdrop.classList.remove('open')
-    }
-    const confirmAdd = () => {
-      const name = addInput.value.trim()
-      if (!name) { addInput.focus(); return }
-      this.addList(name)
-      closeAddModal()
-    }
-
-    document.getElementById('add-list-btn')    .addEventListener('click', () => openAddModal())
-    document.getElementById('add-list-close')  .addEventListener('click', () => closeAddModal())
-    document.getElementById('add-list-cancel') .addEventListener('click', () => closeAddModal())
-    document.getElementById('add-list-confirm').addEventListener('click', () => confirmAdd())
-    addBackdrop.addEventListener('click', e => { if (e.target === e.currentTarget) closeAddModal() })
-    addInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter')  { e.preventDefault(); confirmAdd() }
-      if (e.key === 'Escape') { e.preventDefault(); closeAddModal() }
+    document.getElementById('add-list-close')  .addEventListener('click', () => this._closeAddListModal())
+    document.getElementById('add-list-cancel') .addEventListener('click', () => this._closeAddListModal())
+    document.getElementById('add-list-confirm').addEventListener('click', () => this._confirmAddList())
+    document.getElementById('add-list-backdrop').addEventListener('click', e => {
+      if (e.target === e.currentTarget) this._closeAddListModal()
+    })
+    document.getElementById('add-list-name').addEventListener('keydown', e => {
+      if (e.key === 'Enter')  { e.preventDefault(); this._confirmAddList() }
+      if (e.key === 'Escape') { e.preventDefault(); this._closeAddListModal() }
     })
 
     // ── Add project modal
-    const addProjBackdrop = document.getElementById('add-project-backdrop')
-    const addProjInput    = document.getElementById('add-project-name')
-
-    const openAddProjectModal = () => {
-      addProjInput.value = ''
-      addProjBackdrop.classList.add('open')
-      setTimeout(() => addProjInput.focus(), 60)
-    }
-    const closeAddProjectModal = () => addProjBackdrop.classList.remove('open')
-    const confirmAddProject = () => {
-      const name = addProjInput.value.trim()
-      if (!name) { addProjInput.focus(); return }
-      this.addProject(name)
-      closeAddProjectModal()
-    }
-
-    document.getElementById('add-project-btn')    .addEventListener('click', () => openAddProjectModal())
-    document.getElementById('add-project-close')  .addEventListener('click', () => closeAddProjectModal())
-    document.getElementById('add-project-cancel') .addEventListener('click', () => closeAddProjectModal())
-    document.getElementById('add-project-confirm').addEventListener('click', () => confirmAddProject())
-    addProjBackdrop.addEventListener('click', e => { if (e.target === e.currentTarget) closeAddProjectModal() })
-    addProjInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter')  { e.preventDefault(); confirmAddProject() }
-      if (e.key === 'Escape') { e.preventDefault(); closeAddProjectModal() }
+    document.getElementById('add-project-close')  .addEventListener('click', () => this._closeAddProjectModal())
+    document.getElementById('add-project-cancel') .addEventListener('click', () => this._closeAddProjectModal())
+    document.getElementById('add-project-confirm').addEventListener('click', () => this._confirmAddProject())
+    document.getElementById('add-project-backdrop').addEventListener('click', e => {
+      if (e.target === e.currentTarget) this._closeAddProjectModal()
     })
+    document.getElementById('add-project-name').addEventListener('keydown', e => {
+      if (e.key === 'Enter')  { e.preventDefault(); this._confirmAddProject() }
+      if (e.key === 'Escape') { e.preventDefault(); this._closeAddProjectModal() }
+    })
+
+    // ── Header: "+"-Menü und Einstellungen-Menü
+    document.getElementById('add-menu-btn').addEventListener('click', (e) => this._onAddMenuClick(e.currentTarget))
+    document.getElementById('settings-btn').addEventListener('click', (e) => this._openSettingsMenu(e.currentTarget))
 
     // ── Projekt-Titelbild (verstecktes File-Input, geteilt von allen Projekten)
     this._coverImageInput = document.createElement('input')

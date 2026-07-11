@@ -177,27 +177,25 @@ body {
 .search-clear:hover { color: var(--text); }
 .search-clear.hidden { display: none; }
 
-.add-list-btn, .add-project-btn {
+.add-menu-btn, .settings-btn {
   background: none;
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   color: var(--text-muted);
-  font-size: 0.78rem;
-  font-family: inherit;
-  padding: 0.375rem 0.75rem;
+  padding: 0.375rem 0.5rem;
   cursor: pointer;
-  white-space: nowrap;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: color var(--ease), border-color var(--ease), background var(--ease);
 }
 
-.add-list-btn:hover, .add-project-btn:hover {
+.add-menu-btn:hover, .settings-btn:hover {
   color: var(--text);
   border-color: var(--border-hover);
   background: var(--overlay-a);
 }
-
-.add-project-btn.hidden { display: none; }
 
 /* ── Dashboard Grid ───────────────────────────── */
 .dashboard {
@@ -902,7 +900,6 @@ body {
   .app-title { flex: 1; }
   .share-btn span { display: none; }   /* nur Icon */
   .share-btn { padding: 0.375rem 0.5rem; }
-  .add-list-btn, .add-project-btn { padding: 0.375rem 0.5rem; font-size: 0.75rem; }
   .search-wrapper { display: none; }
   .sync-indicator { order: 1; }
 
@@ -1030,83 +1027,6 @@ body {
   border-color: var(--border-hover);
   background: var(--overlay-a);
 }
-
-/* ── Notify (Push) Button ─────────────────────── */
-.notify-btn {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  color: var(--text-muted);
-  padding: 0.375rem 0.5rem;
-  cursor: pointer;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color var(--ease), border-color var(--ease), background var(--ease);
-}
-
-.notify-btn:hover {
-  color: var(--text);
-  border-color: var(--border-hover);
-  background: var(--overlay-a);
-}
-
-.notify-btn .bell-on  { display: none; }
-.notify-btn .bell-off { display: block; }
-
-.notify-btn.active {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-.notify-btn.active .bell-on  { display: block; }
-.notify-btn.active .bell-off { display: none; }
-
-.notify-btn.denied {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.notify-btn.ios-hint {
-  opacity: 0.5;
-}
-
-.notify-btn.pending {
-  opacity: 0.6;
-  cursor: wait;
-  animation: bell-pulse 1s ease-in-out infinite;
-}
-
-@keyframes bell-pulse {
-  0%, 100% { opacity: 0.6; }
-  50%       { opacity: 1;   }
-}
-
-/* ── Theme-Umschalter ──────────────────────────── */
-.theme-btn {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  color: var(--text-muted);
-  padding: 0.375rem 0.5rem;
-  cursor: pointer;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color var(--ease), border-color var(--ease), background var(--ease);
-}
-
-.theme-btn:hover {
-  color: var(--text);
-  border-color: var(--border-hover);
-  background: var(--overlay-a);
-}
-
-.theme-btn .theme-icon-moon { display: none; }
-.theme-btn .theme-icon-sun  { display: block; }
-.theme-btn.light .theme-icon-sun  { display: none; }
-.theme-btn.light .theme-icon-moon { display: block; }
 
 /* ── Sync Indicator ───────────────────────────── */
 .sync-indicator {
@@ -1479,6 +1399,17 @@ body {
 .project-menu button svg { flex-shrink: 0; width: 14px; height: 14px; }
 .project-menu button.danger { color: var(--accent); }
 .project-menu button.danger:hover { background: var(--accent-dim); }
+.project-menu button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+  animation: menu-item-pulse 1s ease-in-out infinite;
+}
+.project-menu button:disabled:hover { background: none; }
+
+@keyframes menu-item-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 0.85; }
+}
 
 @media (max-width: 640px) {
   .projects-grid { grid-template-columns: 1fr; gap: 0.625rem; }
