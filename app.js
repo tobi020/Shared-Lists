@@ -16,6 +16,7 @@ const ICONS = {
   plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
   x: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
   chevron: `<svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="6 9 12 15 18 9"/></svg>`,
+  camera: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>`,
 }
 
 // ── Default list configuration ─────────────────────────────────────────────
@@ -127,6 +128,8 @@ class ListApp {
     this._imgMem    = new Map()  // imageId → dataURL (Session-Cache)
     this._editImageChanged = false   // wurde das Bild im Edit-Modal geändert?
     this._editImagePending = null    // { id, dataURL } für neu gewähltes Bild
+    this._addImagePending  = {}      // listType → { id, dataURL } fürs Anhängen beim Erstellen
+    this._addImageTargetList = null  // welche Liste hat den Foto-Picker geöffnet?
     this._init()
   }
 
@@ -470,7 +473,17 @@ class ListApp {
 
   addItem(listType, text, priority = 'low') {
     if (!text.trim()) return
-    this.lists[listType].push(this._newItem(text, priority, listType))
+    const item = this._newItem(text, priority, listType)
+    // Beim Erstellen angehängtes Foto übernehmen
+    const pending = this._addImagePending[listType]
+    if (pending) {
+      this._imgPut(pending.id, pending.dataURL)
+      item.image = pending.id
+      delete this._addImagePending[listType]
+      const btn = document.querySelector(`.add-photo-btn[data-list="${listType}"]`)
+      if (btn) this._renderAddPhotoBtn(btn, null)
+    }
+    this.lists[listType].push(item)
     this._save()
     this._renderList(listType)
     this._updateCount(listType)
@@ -655,7 +668,27 @@ class ListApp {
       this.listTypes.map(lt => this._cardHTML(lt)).join('')
     this.listTypes.forEach(lt => { this._renderList(lt); this._updateCount(lt) })
     this._applyOpenState()
+    this._applyAddPhotoStates()
     document.querySelectorAll('.priority-select').forEach(s => this._syncSelectColor(s))
+  }
+
+  _renderAddPhotoBtn(btn, pending) {
+    if (pending) {
+      btn.classList.add('has-photo')
+      btn.innerHTML = `<img src="${pending.dataURL}" alt="" />`
+      btn.title = 'Foto entfernen'
+    } else {
+      btn.classList.remove('has-photo')
+      btn.innerHTML = ICONS.camera
+      btn.title = 'Foto anhängen'
+    }
+  }
+
+  _applyAddPhotoStates() {
+    this.listTypes.forEach(lt => {
+      const btn = document.querySelector(`.add-photo-btn[data-list="${lt}"]`)
+      if (btn) this._renderAddPhotoBtn(btn, this._addImagePending[lt] || null)
+    })
   }
 
   _makeLabelSpan(lt) {
@@ -698,6 +731,7 @@ class ListApp {
         <option value="medium">◈ Mittel</option>
         <option value="high">▲ Hoch</option>
       </select>
+      <button type="button" class="add-photo-btn" data-list="${lt}" title="Foto anhängen">${ICONS.camera}</button>
       <button type="submit" class="add-btn" title="Hinzufügen">${ICONS.plus}</button>
     </form>
     <button class="clear-btn" id="clear-${lt}" data-list="${lt}" type="button"></button>
@@ -1088,21 +1122,32 @@ class ListApp {
     const v = document.createElement('div')
     v.className = 'img-viewer'
     v.id = 'img-viewer'
-    v.innerHTML = '<img class="img-viewer-img" id="img-viewer-img" alt="" />'
+    v.innerHTML = `
+      <div class="img-viewer-header">
+        <div class="img-viewer-avatar"></div>
+        <div class="img-viewer-name"></div>
+      </div>
+      <img class="img-viewer-img" id="img-viewer-img" alt="" />`
     document.body.appendChild(v)
-    const img = v.querySelector('#img-viewer-img')
+    const img    = v.querySelector('#img-viewer-img')
+    const header = v.querySelector('.img-viewer-header')
+    const avatar = v.querySelector('.img-viewer-avatar')
+    const nameEl = v.querySelector('.img-viewer-name')
 
     let scale = 1, tx = 0, ty = 0
     let startX = 0, startY = 0, startTx = 0, startTy = 0, startDist = 0, startScale = 1
     let mode = null, moved = false
 
     const apply = () => { img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})` }
-    const hardReset = () => { scale = 1; tx = 0; ty = 0; img.style.transition = ''; img.style.opacity = ''; apply(); v.style.background = '' }
-    const springBack = () => { img.style.transition = 'transform .28s ease'; scale = 1; tx = 0; ty = 0; apply(); v.style.background = '' }
+    const hardReset = () => { scale = 1; tx = 0; ty = 0; img.style.transition = ''; img.style.opacity = ''; apply(); v.style.background = ''; header.style.opacity = '' }
+    const springBack = () => { img.style.transition = 'transform .28s ease'; scale = 1; tx = 0; ty = 0; apply(); v.style.background = ''; header.style.opacity = '' }
     const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
 
-    const open = (dataURL) => {
+    const open = (dataURL, ctx) => {
       img.src = dataURL
+      avatar.innerHTML = (ctx && ctx.icon) || ICONS.list
+      nameEl.textContent = (ctx && ctx.name) || ''
+      header.classList.toggle('empty', !(ctx && ctx.name))
       hardReset()
       v.classList.add('open')
     }
@@ -1139,6 +1184,7 @@ class ListApp {
         const p = Math.min(Math.hypot(dx, dy) / 320, 1)
         scale = 1 - p * 0.16
         v.style.background = `rgba(0,0,0,${(0.96 * (1 - p * 0.9)).toFixed(3)})`
+        header.style.opacity = String(1 - p)
         apply(); e.preventDefault()
       }
     }, { passive: false })
@@ -1207,7 +1253,13 @@ class ListApp {
       if (action === 'delete')       this.deleteItem(list, id)
       if (action === 'start-rename') this._startRename(list)
       if (action === 'delete-list')  this.deleteList(list)
-      if (action === 'view-image')   this._imgGet(btn.dataset.imageId).then(url => { if (url) this._openImageViewer(url) })
+      if (action === 'view-image') {
+        const row  = btn.closest('.list-item')
+        const rowLt = row && row.dataset.list
+        const item  = rowLt && (this.lists[rowLt] || []).find(i => i.id === row.dataset.id)
+        const ctx = { icon: ICONS[rowLt] || ICONS.list, name: item ? item.text : '' }
+        this._imgGet(btn.dataset.imageId).then(url => { if (url) this._openImageViewer(url, ctx) })
+      }
     })
 
     dash.addEventListener('click', e => {
@@ -1331,7 +1383,48 @@ class ListApp {
       this._setEditImagePreview(null)
     })
     imgThumb?.addEventListener('click', () => {
-      if (imgThumb.src) this._openImageViewer(imgThumb.src)
+      if (!imgThumb.src) return
+      let ctx = null
+      if (this.editing) {
+        const it = (this.lists[this.editing.listType] || []).find(i => i.id === this.editing.id)
+        ctx = { icon: ICONS[this.editing.listType] || ICONS.list, name: it ? it.text : '' }
+      }
+      this._openImageViewer(imgThumb.src, ctx)
+    })
+
+    // ── Foto direkt beim Erstellen anhängen (Kamera-Button in der Add-Form)
+    const addImgInput = document.createElement('input')
+    addImgInput.type = 'file'
+    addImgInput.accept = 'image/*'
+    addImgInput.style.display = 'none'
+    document.body.appendChild(addImgInput)
+    this._addImageInput = addImgInput
+    addImgInput.addEventListener('change', async () => {
+      const file = addImgInput.files && addImgInput.files[0]
+      addImgInput.value = ''
+      const lt = this._addImageTargetList
+      if (!file || !lt) return
+      try {
+        const dataURL = await this._compressImage(file)
+        const id = (crypto.randomUUID ? crypto.randomUUID() : 'img-' + Date.now() + Math.random().toString(36).slice(2))
+        this._addImagePending[lt] = { id, dataURL }
+        const btn = document.querySelector(`.add-photo-btn[data-list="${lt}"]`)
+        if (btn) this._renderAddPhotoBtn(btn, this._addImagePending[lt])
+      } catch (e) { console.warn('[Img] Verkleinern fehlgeschlagen:', e && e.message) }
+    })
+
+    dash.addEventListener('click', e => {
+      const pbtn = e.target.closest('.add-photo-btn')
+      if (!pbtn) return
+      const lt = pbtn.dataset.list
+      if (this._addImagePending[lt]) {
+        // schon ein Foto angehängt → antippen entfernt es
+        delete this._addImagePending[lt]
+        this._renderAddPhotoBtn(pbtn, null)
+      } else {
+        this._addImageTargetList = lt
+        addImgInput.click()
+      }
     })
 
     document.getElementById('modal-backdrop').addEventListener('click', e => {
