@@ -17,6 +17,9 @@ const ICONS = {
   x: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
   chevron: `<svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="6 9 12 15 18 9"/></svg>`,
   camera: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>`,
+  dots: `<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>`,
+  folder: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="40" height="40"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>`,
+  arrowLeft: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
 }
 
 // ── Default list configuration ─────────────────────────────────────────────
@@ -116,6 +119,8 @@ class ListApp {
     this.lists       = state.lists
     this.listTypes   = state.listTypes
     this.listNames   = state.listNames
+    this.projects    = state.projects
+    this._currentProjectId = null   // null = Start-Ansicht
     this.globalSearch = ''
     this.dragging    = null
     this.dropTarget  = null
@@ -130,6 +135,8 @@ class ListApp {
     this._editImagePending = null    // { id, dataURL } für neu gewähltes Bild
     this._addImagePending  = {}      // listType → { id, dataURL } fürs Anhängen beim Erstellen
     this._addImageTargetList = null  // welche Liste hat den Foto-Picker geöffnet?
+    this._coverImageTargetProject = null  // welches Projekt bekommt das nächste Titelbild?
+    this._projectMenuEl = null
     this._init()
   }
 
@@ -139,12 +146,25 @@ class ListApp {
     return { todo: [], kochliste: [], watchlist: [], 'date-ideen': [] }
   }
 
+  _sanitizeProjects(rawProjects, listTypes) {
+    if (!Array.isArray(rawProjects)) return []
+    const known = new Set(listTypes)
+    return rawProjects
+      .filter(p => p && typeof p === 'object' && p.id && p.name)
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        image: p.image || null,
+        listTypes: Array.isArray(p.listTypes) ? p.listTypes.filter(lt => known.has(lt)) : [],
+      }))
+  }
+
   _loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return { lists: this._defaultLists(), listTypes: [...LIST_TYPES], listNames: {} }
+      if (!raw) return { lists: this._defaultLists(), listTypes: [...LIST_TYPES], listNames: {}, projects: [] }
       const parsed = JSON.parse(raw)
-      // New format: { listTypes, listNames, lists }
+      // New format: { listTypes, listNames, lists, projects }
       if (parsed.lists && typeof parsed.lists === 'object' && !Array.isArray(parsed.lists)) {
         const listTypes = Array.isArray(parsed.listTypes) ? parsed.listTypes : [...LIST_TYPES]
         const listNames = (parsed.listNames && typeof parsed.listNames === 'object') ? parsed.listNames : {}
@@ -152,16 +172,17 @@ class ListApp {
         for (const lt of listTypes) {
           lists[lt] = Array.isArray(parsed.lists[lt]) ? parsed.lists[lt] : []
         }
-        return { lists, listTypes, listNames }
+        const projects = this._sanitizeProjects(parsed.projects, listTypes)
+        return { lists, listTypes, listNames, projects }
       }
       // Old format: { todo: [...], kochliste: [...], ... } — migrate transparently
       const lists = this._defaultLists()
       for (const lt of LIST_TYPES) {
         if (Array.isArray(parsed[lt])) lists[lt] = parsed[lt]
       }
-      return { lists, listTypes: [...LIST_TYPES], listNames: {} }
+      return { lists, listTypes: [...LIST_TYPES], listNames: {}, projects: [] }
     } catch {
-      return { lists: this._defaultLists(), listTypes: [...LIST_TYPES], listNames: {} }
+      return { lists: this._defaultLists(), listTypes: [...LIST_TYPES], listNames: {}, projects: [] }
     }
   }
 
@@ -171,6 +192,7 @@ class ListApp {
         listTypes: this.listTypes,
         listNames: this.listNames,
         lists: this.lists,
+        projects: this.projects,
       }))
     } catch (e) { console.warn('localStorage unavailable:', e) }
     if (this._syncEnabled && this._roomId) this._pushToFirestore()
@@ -186,6 +208,7 @@ class ListApp {
       listTypes: this.listTypes,
       listNames: this.listNames,
       lists: this.lists,
+      projects: this.projects,
       pushSubs: this._pushSubs || {},
       _writtenBy: this._clientId,
       updatedAt: this._serverTsFn(),
@@ -242,6 +265,10 @@ class ListApp {
       lists[lt] = Array.isArray(data.lists[lt]) ? data.lists[lt] : []
     }
     this.lists = lists
+    this.projects = this._sanitizeProjects(data.projects, this.listTypes)
+    if (this._currentProjectId && !this.projects.some(p => p.id === this._currentProjectId)) {
+      this._currentProjectId = null
+    }
     // Push-Abos der anderen Geräte übernehmen; eigenes Abo nicht verlieren
     if (data.pushSubs && typeof data.pushSubs === 'object') {
       this._pushSubs = data.pushSubs
@@ -254,6 +281,7 @@ class ListApp {
         listTypes: this.listTypes,
         listNames: this.listNames,
         lists: this.lists,
+        projects: this.projects,
       }))
     } catch { /* ignore */ }
     this._renderAll()
@@ -590,6 +618,10 @@ class ListApp {
     this.listTypes.push(key)
     this.listNames[key] = name
     this.lists[key] = []
+    if (this._currentProjectId) {
+      const p = this.projects.find(pr => pr.id === this._currentProjectId)
+      if (p) p.listTypes.push(key)
+    }
     this._save()
     this._renderAll()
   }
@@ -604,9 +636,84 @@ class ListApp {
       this.listTypes = this.listTypes.filter(t => t !== lt)
       delete this.lists[lt]
       delete this.listNames[lt]
+      this.projects.forEach(p => { p.listTypes = p.listTypes.filter(t => t !== lt) })
       this._save()
       this._renderAll()
     })
+  }
+
+  // ── Projekte ────────────────────────────────────
+
+  addProject(name) {
+    const id = 'proj-' + Date.now()
+    this.projects.push({ id, name, image: null, listTypes: [] })
+    this._save()
+    this._renderAll()
+  }
+
+  renameProject(id, name) {
+    const p = this.projects.find(pr => pr.id === id)
+    if (!p) return
+    p.name = name
+    this._save()
+    this._renderAll()
+  }
+
+  setProjectImage(id, imageId) {
+    const p = this.projects.find(pr => pr.id === id)
+    if (!p) return
+    p.image = imageId
+    this._save()
+    this._renderAll()
+  }
+
+  removeProjectImage(id) {
+    const p = this.projects.find(pr => pr.id === id)
+    if (!p) return
+    p.image = null
+    this._save()
+    this._renderAll()
+  }
+
+  deleteProject(id) {
+    const p = this.projects.find(pr => pr.id === id)
+    if (!p) return
+    const count = p.listTypes.length
+    const msg = count > 0
+      ? `Die ${count === 1 ? 'enthaltene Liste bleibt' : `${count} enthaltenen Listen bleiben`} erhalten und ${count === 1 ? 'wird' : 'werden'} zu losen Listen.`
+      : `Diese Aktion kann nicht rückgängig gemacht werden.`
+    this._confirm(`Projekt "${p.name}" löschen?`, msg, () => {
+      this.projects = this.projects.filter(pr => pr.id !== id)
+      if (this._currentProjectId === id) this._currentProjectId = null
+      this._save()
+      this._renderAll()
+    })
+  }
+
+  openProject(id) {
+    const p = this.projects.find(pr => pr.id === id)
+    if (!p) return
+    this._currentProjectId = id
+    this._renderAll()
+    document.getElementById('dashboard').scrollTo({ top: 0 })
+  }
+
+  closeProject() {
+    this._currentProjectId = null
+    this._renderAll()
+    document.getElementById('dashboard').scrollTo({ top: 0 })
+  }
+
+  _startRenameProject(id) {
+    const p = this.projects.find(pr => pr.id === id)
+    if (!p) return
+    const name = prompt('Projektname:', p.name)
+    if (name && name.trim() && name.trim() !== p.name) this.renameProject(id, name.trim())
+  }
+
+  _defaultCoverClass(id) {
+    const n = [...String(id)].reduce((a, c) => a + c.charCodeAt(0), 0)
+    return `cover-default-${(n % 4) + 1}`
   }
 
   // ── Search / filter ────────────────────────────
@@ -664,12 +771,129 @@ class ListApp {
   }
 
   _renderAll() {
-    document.getElementById('dashboard').innerHTML =
-      this.listTypes.map(lt => this._cardHTML(lt)).join('')
+    const dash = document.getElementById('dashboard')
+    dash.innerHTML = this._dashboardHTML()
     this.listTypes.forEach(lt => { this._renderList(lt); this._updateCount(lt) })
     this._applyOpenState()
     this._applyAddPhotoStates()
+    this._updateChrome()
+    this._hydrateImages(dash)
     document.querySelectorAll('.priority-select').forEach(s => this._syncSelectColor(s))
+  }
+
+  _updateChrome() {
+    const addListBtn = document.getElementById('add-list-btn')
+    const addProjectBtn = document.getElementById('add-project-btn')
+    if (addListBtn) addListBtn.textContent = this._currentProjectId ? '+ Liste hinzufügen' : '+ Neue Liste'
+    if (addProjectBtn) addProjectBtn.classList.toggle('hidden', !!this._currentProjectId)
+  }
+
+  // ── Projekte: Rendering ─────────────────────────
+
+  _groupedListTypes() {
+    return new Set(this.projects.flatMap(p => p.listTypes))
+  }
+
+  _dashboardHTML() {
+    if (this._currentProjectId) {
+      const p = this.projects.find(pr => pr.id === this._currentProjectId)
+      if (p) return this._projectDetailHTML(p)
+      this._currentProjectId = null
+    }
+    return this._homeHTML()
+  }
+
+  _homeHTML() {
+    const grouped = this._groupedListTypes()
+    const loose = this.listTypes.filter(lt => !grouped.has(lt))
+    const projectsHTML = this.projects.length
+      ? `<div class="projects-grid">${this.projects.map(p => this._projectCardHTML(p)).join('')}</div>`
+      : ''
+    return `${projectsHTML}<div class="dashboard-lists">${loose.map(lt => this._cardHTML(lt)).join('')}</div>`
+  }
+
+  _projectDetailHTML(p) {
+    const lists = p.listTypes.filter(lt => this.listTypes.includes(lt))
+    const count = lists.length
+    const coverClass = p.image ? '' : ` project-cover-default ${this._defaultCoverClass(p.id)}`
+    const coverInner = p.image ? `<img data-img="${p.image}" alt="" />` : ICONS.folder
+    const listsHTML = lists.length
+      ? lists.map(lt => this._cardHTML(lt)).join('')
+      : `<div class="project-empty-state">${ICONS.empty}<p>Noch keine Listen in diesem Projekt.</p></div>`
+    return `
+<div class="project-detail-header">
+  <div class="project-detail-cover${coverClass}">${coverInner}<div class="project-cover-scrim"></div></div>
+  <button class="project-back-btn" data-action="close-project" title="Zurück" aria-label="Zurück">${ICONS.arrowLeft}</button>
+  <button class="project-menu-btn detail" data-action="project-menu" data-project="${p.id}" title="Optionen" aria-label="Projekt-Optionen">${ICONS.dots}</button>
+  <div class="project-detail-title">
+    <span class="project-detail-name" data-action="start-rename-project" data-project="${p.id}" title="Klicken zum Umbenennen">${this._esc(p.name)}</span>
+    <span class="project-detail-count">${count === 1 ? '1 Liste' : count + ' Listen'}</span>
+  </div>
+</div>
+<div class="dashboard-lists">${listsHTML}</div>`
+  }
+
+  _projectCardHTML(p) {
+    const count = p.listTypes.length
+    const coverClass = p.image ? '' : ` project-cover-default ${this._defaultCoverClass(p.id)}`
+    const coverInner = p.image ? `<img data-img="${p.image}" alt="" />` : ICONS.folder
+    return `
+<div class="project-card" data-action="open-project" data-project="${p.id}">
+  <div class="project-cover${coverClass}">
+    ${coverInner}
+    <div class="project-cover-scrim"></div>
+    <button class="project-menu-btn" data-action="project-menu" data-project="${p.id}" title="Optionen" aria-label="Projekt-Optionen">${ICONS.dots}</button>
+    <div class="project-card-info">
+      <div class="project-card-name">${this._esc(p.name)}</div>
+      <div class="project-card-count">${count === 1 ? '1 Liste' : count + ' Listen'}</div>
+    </div>
+  </div>
+</div>`
+  }
+
+  _openProjectMenu(id, anchor) {
+    this._closeProjectMenu()
+    const p = this.projects.find(pr => pr.id === id)
+    if (!p) return
+    const menu = document.createElement('div')
+    menu.className = 'project-menu'
+    menu.innerHTML = `
+      <button data-pm="rename">${ICONS.pencil} Umbenennen</button>
+      <button data-pm="cover">${ICONS.camera} Titelbild ${p.image ? 'ändern' : 'festlegen'}</button>
+      ${p.image ? `<button data-pm="cover-remove">${ICONS.x} Titelbild entfernen</button>` : ''}
+      <button data-pm="delete" class="danger">${ICONS.trash} Projekt löschen</button>
+    `
+    document.body.appendChild(menu)
+    const r = anchor.getBoundingClientRect()
+    const menuWidth = 210
+    menu.style.top = Math.round(r.bottom + 6 + window.scrollY) + 'px'
+    menu.style.left = Math.round(Math.min(r.left, window.innerWidth - menuWidth - 8)) + 'px'
+    this._projectMenuEl = menu
+
+    menu.addEventListener('click', e => {
+      const btn = e.target.closest('[data-pm]')
+      if (!btn) return
+      const action = btn.dataset.pm
+      this._closeProjectMenu()
+      if (action === 'rename')       this._startRenameProject(id)
+      if (action === 'cover')        { this._coverImageTargetProject = id; this._coverImageInput.click() }
+      if (action === 'cover-remove') this.removeProjectImage(id)
+      if (action === 'delete')       this.deleteProject(id)
+    })
+
+    setTimeout(() => {
+      document.addEventListener('click', this._projectMenuOutsideHandler = (e) => {
+        if (this._projectMenuEl && !this._projectMenuEl.contains(e.target)) this._closeProjectMenu()
+      }, { capture: true })
+    }, 0)
+  }
+
+  _closeProjectMenu() {
+    if (this._projectMenuOutsideHandler) {
+      document.removeEventListener('click', this._projectMenuOutsideHandler, { capture: true })
+      this._projectMenuOutsideHandler = null
+    }
+    if (this._projectMenuEl) { this._projectMenuEl.remove(); this._projectMenuEl = null }
   }
 
   _renderAddPhotoBtn(btn, pending) {
@@ -1253,6 +1477,10 @@ class ListApp {
       if (action === 'delete')       this.deleteItem(list, id)
       if (action === 'start-rename') this._startRename(list)
       if (action === 'delete-list')  this.deleteList(list)
+      if (action === 'open-project')         this.openProject(btn.dataset.project)
+      if (action === 'close-project')        this.closeProject()
+      if (action === 'project-menu')         this._openProjectMenu(btn.dataset.project, btn)
+      if (action === 'start-rename-project') this._startRenameProject(btn.dataset.project)
       if (action === 'view-image') {
         const row  = btn.closest('.list-item')
         const rowLt = row && row.dataset.list
@@ -1352,6 +1580,52 @@ class ListApp {
     addInput.addEventListener('keydown', e => {
       if (e.key === 'Enter')  { e.preventDefault(); confirmAdd() }
       if (e.key === 'Escape') { e.preventDefault(); closeAddModal() }
+    })
+
+    // ── Add project modal
+    const addProjBackdrop = document.getElementById('add-project-backdrop')
+    const addProjInput    = document.getElementById('add-project-name')
+
+    const openAddProjectModal = () => {
+      addProjInput.value = ''
+      addProjBackdrop.classList.add('open')
+      setTimeout(() => addProjInput.focus(), 60)
+    }
+    const closeAddProjectModal = () => addProjBackdrop.classList.remove('open')
+    const confirmAddProject = () => {
+      const name = addProjInput.value.trim()
+      if (!name) { addProjInput.focus(); return }
+      this.addProject(name)
+      closeAddProjectModal()
+    }
+
+    document.getElementById('add-project-btn')    .addEventListener('click', () => openAddProjectModal())
+    document.getElementById('add-project-close')  .addEventListener('click', () => closeAddProjectModal())
+    document.getElementById('add-project-cancel') .addEventListener('click', () => closeAddProjectModal())
+    document.getElementById('add-project-confirm').addEventListener('click', () => confirmAddProject())
+    addProjBackdrop.addEventListener('click', e => { if (e.target === e.currentTarget) closeAddProjectModal() })
+    addProjInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter')  { e.preventDefault(); confirmAddProject() }
+      if (e.key === 'Escape') { e.preventDefault(); closeAddProjectModal() }
+    })
+
+    // ── Projekt-Titelbild (verstecktes File-Input, geteilt von allen Projekten)
+    this._coverImageInput = document.createElement('input')
+    this._coverImageInput.type = 'file'
+    this._coverImageInput.accept = 'image/*'
+    this._coverImageInput.style.display = 'none'
+    document.body.appendChild(this._coverImageInput)
+    this._coverImageInput.addEventListener('change', async () => {
+      const file = this._coverImageInput.files && this._coverImageInput.files[0]
+      this._coverImageInput.value = ''
+      const pid = this._coverImageTargetProject
+      if (!file || !pid) return
+      try {
+        const dataURL = await this._compressImage(file, 1200, 0.75)
+        const id = (crypto.randomUUID ? crypto.randomUUID() : 'img-' + Date.now() + Math.random().toString(36).slice(2))
+        await this._imgPut(id, dataURL)
+        this.setProjectImage(pid, id)
+      } catch (e) { console.warn('[Img] Titelbild fehlgeschlagen:', e && e.message) }
     })
 
     // ── Modal
