@@ -1456,9 +1456,30 @@ class ListApp {
     }
   }
 
+  // ── Theme (Hell-/Dunkelmodus) ──────────────────
+
+  _initTheme() {
+    const theme = localStorage.getItem('_listAppTheme') || 'dark'
+    this._applyTheme(theme)
+    document.getElementById('theme-btn')?.addEventListener('click', () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'
+      this._applyTheme(next)
+      localStorage.setItem('_listAppTheme', next)
+    })
+  }
+
+  _applyTheme(theme) {
+    if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light')
+    else document.documentElement.removeAttribute('data-theme')
+    document.getElementById('theme-btn')?.classList.toggle('light', theme === 'light')
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.setAttribute('content', theme === 'light' ? '#f7f7f5' : '#0a0a0a')
+  }
+
   // ── Init & Event Binding ───────────────────────
 
   _init() {
+    this._initTheme()
     this._initAudio()
     this._initImageViewer()
     this._renderAll()
