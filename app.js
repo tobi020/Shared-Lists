@@ -104,6 +104,7 @@ class ListApp {
     this._db           = window._firestoreDb              || null
     this._docFn        = window._firestoreDoc             || null
     this._setDocFn     = window._firestoreSetDoc          || null
+    this._getDocFn     = window._firestoreGetDoc          || null
     this._onSnapshotFn = window._firestoreOnSnapshot      || null
     this._serverTsFn   = window._firestoreServerTimestamp || null
     this._syncEnabled  = !!(this._db)
@@ -123,6 +124,9 @@ class ListApp {
     this._pushSubs  = {}         // clientId → { sub, ts } (in Firestore gespiegelt)
     this._mySubJson = null       // eigenes Push-Abo (zum Wiederherstellen)
     this._myName    = localStorage.getItem('_listAppUsername') || ''
+    this._imgMem    = new Map()  // imageId → dataURL (Session-Cache)
+    this._editImageChanged = false   // wurde das Bild im Edit-Modal geändert?
+    this._editImagePending = null    // { id, dataURL } für neu gewähltes Bild
     this._init()
   }
 
@@ -458,6 +462,7 @@ class ListApp {
       listType,
       tags: [],
       notes: '',
+      image: null,
     }
   }
 
@@ -714,6 +719,7 @@ class ListApp {
       el.innerHTML = `<div class="empty-state">${ICONS.empty}<p>${searchActive ? cfg.emptySearchText : cfg.emptyText}</p></div>`
     } else {
       el.innerHTML = sorted.map(item => this._itemHTML(item, searchActive)).join('')
+      this._hydrateImages(el)
     }
 
     const completedCount = this.lists[listType].filter(i => i.completed).length
@@ -743,6 +749,7 @@ class ListApp {
     <div class="item-text">${this._esc(item.text)}</div>
     ${meta}${notes}
   </div>
+  ${item.image ? `<button class="item-thumb" data-action="view-image" data-image-id="${item.image}" title="Foto ansehen" aria-label="Foto ansehen"><img data-img="${item.image}" alt="" /></button>` : ''}
   <div class="item-actions">
     <button class="action-btn" data-action="edit" data-id="${item.id}" data-list="${item.listType}" title="Bearbeiten">${ICONS.pencil}</button>
     <button class="action-btn delete" data-action="delete" data-id="${item.id}" data-list="${item.listType}" title="Löschen">${ICONS.trash}</button>
@@ -839,6 +846,16 @@ class ListApp {
       btn.classList.toggle('active', btn.dataset.priority === item.priority)
     )
 
+    // Bild-Zustand zurücksetzen und aktuelles Bild (falls vorhanden) anzeigen
+    this._editImageChanged = false
+    this._editImagePending = null
+    this._setEditImagePreview(null)
+    if (item.image) {
+      this._imgGet(item.image).then(url => {
+        if (url && this.editing && this.editing.id === id) this._setEditImagePreview(url)
+      })
+    }
+
     document.getElementById('modal-backdrop').classList.add('open')
     setTimeout(() => document.getElementById('edit-text').focus(), 60)
   }
@@ -855,9 +872,19 @@ class ListApp {
     const tags  = document.getElementById('edit-tags').value
       .split(',').map(t => t.trim()).filter(Boolean)
     const notes = document.getElementById('edit-notes').value.trim()
-    this.updateItem(this.editing.listType, this.editing.id, {
-      text, priority: this.editPriority, tags, notes,
-    })
+    const updates = { text, priority: this.editPriority, tags, notes }
+    if (this._editImageChanged) {
+      if (this._editImagePending) {
+        // Cache sofort füllen (Sofort-Anzeige); IndexedDB/Firestore schreiben async
+        this._imgPut(this._editImagePending.id, this._editImagePending.dataURL)
+        updates.image = this._editImagePending.id
+      } else {
+        updates.image = null
+      }
+    }
+    this.updateItem(this.editing.listType, this.editing.id, updates)
+    this._editImageChanged = false
+    this._editImagePending = null
     this.closeEdit()
   }
 
@@ -949,10 +976,221 @@ class ListApp {
     }
   }
 
+  // ── Bilder: Speicher (IndexedDB lokal + Firestore-Spiegel) ─────────────────
+
+  _idb() {
+    if (this._idbPromise) return this._idbPromise
+    this._idbPromise = new Promise((resolve, reject) => {
+      let req
+      try { req = indexedDB.open('holzstein-img', 1) }
+      catch (e) { reject(e); return }
+      req.onupgradeneeded = () => { req.result.createObjectStore('img') }
+      req.onsuccess = () => resolve(req.result)
+      req.onerror   = () => reject(req.error)
+    })
+    return this._idbPromise
+  }
+
+  async _idbGet(id) {
+    const db = await this._idb()
+    return new Promise((resolve, reject) => {
+      const r = db.transaction('img', 'readonly').objectStore('img').get(id)
+      r.onsuccess = () => resolve(r.result || null)
+      r.onerror   = () => reject(r.error)
+    })
+  }
+
+  async _idbPut(id, val) {
+    const db = await this._idb()
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('img', 'readwrite')
+      tx.objectStore('img').put(val, id)
+      tx.oncomplete = () => resolve()
+      tx.onerror    = () => reject(tx.error)
+    })
+  }
+
+  // Liefert die dataURL zu einer imageId: Session-Cache → IndexedDB → Firestore
+  async _imgGet(id) {
+    if (!id) return null
+    if (this._imgMem.has(id)) return this._imgMem.get(id)
+    try {
+      const local = await this._idbGet(id)
+      if (local) { this._imgMem.set(id, local); return local }
+    } catch { /* IndexedDB nicht verfügbar */ }
+    if (this._db && this._getDocFn) {
+      try {
+        const snap = await this._getDocFn(this._docFn(this._db, 'images', id))
+        if (snap.exists()) {
+          const data = snap.data().data
+          if (data) {
+            this._imgMem.set(id, data)
+            this._idbPut(id, data).catch(() => {})
+            return data
+          }
+        }
+      } catch (e) { console.warn('[Img] Firestore-Laden fehlgeschlagen:', e && e.message) }
+    }
+    return null
+  }
+
+  // Speichert eine dataURL: Cache sofort (für Sofort-Anzeige) + IndexedDB + Firestore
+  async _imgPut(id, dataURL) {
+    this._imgMem.set(id, dataURL)
+    this._idbPut(id, dataURL).catch(() => {})
+    if (this._db && this._setDocFn) {
+      try {
+        await this._setDocFn(this._docFn(this._db, 'images', id), {
+          data: dataURL, roomId: this._roomId || null, createdAt: Date.now(),
+        })
+      } catch (e) { console.warn('[Img] Firestore-Upload fehlgeschlagen:', e && e.message) }
+    }
+  }
+
+  // Datei → verkleinerte JPEG-dataURL (max. Kantenlänge, Qualität)
+  _compressImage(file, maxDim = 1280, quality = 0.72) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file)
+      const img = new Image()
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        let w = img.naturalWidth, h = img.naturalHeight
+        if (Math.max(w, h) > maxDim) {
+          const s = maxDim / Math.max(w, h)
+          w = Math.round(w * s); h = Math.round(h * s)
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = w; canvas.height = h
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+        try { resolve(canvas.toDataURL('image/jpeg', quality)) }
+        catch (e) { reject(e) }
+      }
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Bild konnte nicht gelesen werden')) }
+      img.src = url
+    })
+  }
+
+  // Füllt alle <img data-img="…"> mit ihrer dataURL (Cache sofort, sonst async)
+  _hydrateImages(root) {
+    const scope = root || document
+    scope.querySelectorAll('img[data-img]').forEach(img => {
+      const id = img.getAttribute('data-img')
+      if (!id || img.dataset.loaded === id) return
+      const cached = this._imgMem.get(id)
+      if (cached) { img.src = cached; img.dataset.loaded = id; return }
+      this._imgGet(id).then(url => { if (url) { img.src = url; img.dataset.loaded = id } })
+    })
+  }
+
+  // ── Vollbild-Viewer: Wischen zum Schließen, Pinch-Zoom, Tap schließt ───────
+
+  _initImageViewer() {
+    const v = document.createElement('div')
+    v.className = 'img-viewer'
+    v.id = 'img-viewer'
+    v.innerHTML = '<img class="img-viewer-img" id="img-viewer-img" alt="" />'
+    document.body.appendChild(v)
+    const img = v.querySelector('#img-viewer-img')
+
+    let scale = 1, tx = 0, ty = 0
+    let startX = 0, startY = 0, startTx = 0, startTy = 0, startDist = 0, startScale = 1
+    let mode = null, moved = false
+
+    const apply = () => { img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})` }
+    const hardReset = () => { scale = 1; tx = 0; ty = 0; img.style.transition = ''; img.style.opacity = ''; apply(); v.style.background = '' }
+    const springBack = () => { img.style.transition = 'transform .28s ease'; scale = 1; tx = 0; ty = 0; apply(); v.style.background = '' }
+    const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
+
+    const open = (dataURL) => {
+      img.src = dataURL
+      hardReset()
+      v.classList.add('open')
+    }
+    const close = () => {
+      v.classList.remove('open')
+      setTimeout(() => { img.src = ''; hardReset() }, 260)
+    }
+    this._openImageViewer = open
+
+    v.addEventListener('touchstart', (e) => {
+      img.style.transition = 'none'
+      if (e.touches.length === 2) {
+        mode = 'pinch'; startDist = dist(e.touches) || 1; startScale = scale
+      } else {
+        const t = e.touches[0]
+        startX = t.clientX; startY = t.clientY; startTx = tx; startTy = ty; moved = false
+        mode = scale > 1.02 ? 'pan' : 'drag'
+      }
+    }, { passive: false })
+
+    v.addEventListener('touchmove', (e) => {
+      if (mode === 'pinch' && e.touches.length === 2) {
+        scale = Math.min(5, Math.max(1, startScale * (dist(e.touches) / startDist)))
+        apply(); e.preventDefault(); return
+      }
+      const t = e.touches[0]
+      if (!t) return
+      const dx = t.clientX - startX, dy = t.clientY - startY
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) moved = true
+      if (mode === 'pan') {
+        tx = startTx + dx; ty = startTy + dy; apply(); e.preventDefault()
+      } else if (mode === 'drag') {
+        tx = dx; ty = dy
+        const p = Math.min(Math.hypot(dx, dy) / 320, 1)
+        scale = 1 - p * 0.16
+        v.style.background = `rgba(0,0,0,${(0.96 * (1 - p * 0.9)).toFixed(3)})`
+        apply(); e.preventDefault()
+      }
+    }, { passive: false })
+
+    v.addEventListener('touchend', () => {
+      if (mode === 'pinch') { if (scale <= 1.03) springBack(); mode = null; return }
+      if (mode === 'drag') {
+        if (Math.hypot(tx, ty) > 120) {
+          img.style.transition = 'transform .24s ease, opacity .24s ease'
+          tx *= 2.6; ty *= 2.6; img.style.opacity = '0'; apply()
+          v.style.background = 'rgba(0,0,0,0)'
+          setTimeout(close, 200)
+        } else {
+          springBack()
+        }
+        mode = null; return
+      }
+      mode = null
+    })
+
+    // Klick / Tap auf das Bild schließt (nur ohne vorheriges Ziehen, unzoomt)
+    v.addEventListener('click', () => {
+      if (moved) { moved = false; return }
+      if (scale > 1.02) { springBack(); return }
+      close()
+    })
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && v.classList.contains('open')) close()
+    })
+  }
+
+  _setEditImagePreview(dataURL) {
+    const preview = document.getElementById('edit-image-preview')
+    const addBtn  = document.getElementById('edit-image-add')
+    const thumb   = document.getElementById('edit-image-thumb')
+    if (!preview || !addBtn || !thumb) return
+    if (dataURL) {
+      thumb.src = dataURL
+      preview.classList.remove('hidden')
+      addBtn.classList.add('hidden')
+    } else {
+      thumb.removeAttribute('src')
+      preview.classList.add('hidden')
+      addBtn.classList.remove('hidden')
+    }
+  }
+
   // ── Init & Event Binding ───────────────────────
 
   _init() {
     this._initAudio()
+    this._initImageViewer()
     this._renderAll()
     this._initFirebase()
     this._initPush()
@@ -969,6 +1207,7 @@ class ListApp {
       if (action === 'delete')       this.deleteItem(list, id)
       if (action === 'start-rename') this._startRename(list)
       if (action === 'delete-list')  this.deleteList(list)
+      if (action === 'view-image')   this._imgGet(btn.dataset.imageId).then(url => { if (url) this._openImageViewer(url) })
     })
 
     dash.addEventListener('click', e => {
@@ -1067,6 +1306,33 @@ class ListApp {
     document.getElementById('modal-close') .addEventListener('click', () => this.closeEdit())
     document.getElementById('modal-cancel').addEventListener('click', () => this.closeEdit())
     document.getElementById('modal-save')  .addEventListener('click', () => this.saveEdit())
+
+    // ── Bild im Bearbeiten-Modal
+    const imgAdd    = document.getElementById('edit-image-add')
+    const imgInput  = document.getElementById('edit-image-input')
+    const imgRemove = document.getElementById('edit-image-remove')
+    const imgThumb  = document.getElementById('edit-image-thumb')
+    imgAdd?.addEventListener('click', () => imgInput.click())
+    imgInput?.addEventListener('change', async () => {
+      const file = imgInput.files && imgInput.files[0]
+      imgInput.value = ''
+      if (!file) return
+      try {
+        const dataURL = await this._compressImage(file)
+        const id = (crypto.randomUUID ? crypto.randomUUID() : 'img-' + Date.now() + Math.random().toString(36).slice(2))
+        this._editImageChanged = true
+        this._editImagePending = { id, dataURL }
+        this._setEditImagePreview(dataURL)
+      } catch (e) { console.warn('[Img] Verkleinern fehlgeschlagen:', e && e.message) }
+    })
+    imgRemove?.addEventListener('click', () => {
+      this._editImageChanged = true
+      this._editImagePending = null
+      this._setEditImagePreview(null)
+    })
+    imgThumb?.addEventListener('click', () => {
+      if (imgThumb.src) this._openImageViewer(imgThumb.src)
+    })
 
     document.getElementById('modal-backdrop').addEventListener('click', e => {
       if (e.target === e.currentTarget) this.closeEdit()
@@ -1193,4 +1459,4 @@ class ListApp {
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 
-new ListApp()
+window.app = new ListApp()
