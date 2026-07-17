@@ -1375,12 +1375,36 @@ body {
 .cover-picker-swatch.gallery:hover { color: var(--text); }
 
 /* ── Icon-Auswahl für Listen ───────────────────── */
+.icon-picker-search { margin-bottom: 0.875rem; }
+
 .icon-picker-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
+  align-items: start;
   gap: 0.5rem;
-  max-height: 60vh;
+  max-height: 55vh;
   overflow-y: auto;
+  padding-right: 2px;
+}
+
+.icon-picker-category {
+  grid-column: 1 / -1;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  padding-bottom: 0.15rem;
+}
+.icon-picker-category:first-child { margin-top: 0; }
+
+.icon-picker-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  padding: 1.5rem 0;
 }
 
 .icon-picker-swatch {

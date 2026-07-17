@@ -56,44 +56,83 @@ const ICONS = {
   bookmark: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>`,
   clock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
   globe: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>`,
+
+  // ── Zweite Erweiterungsrunde (Reisen, Essen, Zuhause, Sport, Natur, Technik …)
+  plane: `<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2.5 1.5V22l4-1 4 1v-1.5L13 19v-5.5z"/></svg>`,
+  suitcase: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="3" y1="13" x2="21" y2="13"/></svg>`,
+  bus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="5" width="18" height="12" rx="2"/><line x1="3" y1="11" x2="21" y2="11"/><circle cx="7.5" cy="20" r="1.5"/><circle cx="16.5" cy="20" r="1.5"/></svg>`,
+  train: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="4" y="3" width="16" height="13" rx="3"/><line x1="4" y1="11" x2="20" y2="11"/><line x1="8" y1="16" x2="6" y2="21"/><line x1="16" y1="16" x2="18" y2="21"/><circle cx="8.5" cy="13.5" r="1"/><circle cx="15.5" cy="13.5" r="1"/></svg>`,
+  ship: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M3 18l2-7h14l2 7"/><path d="M12 11V3l5 4-5 4"/><line x1="5" y1="18" x2="19" y2="18"/></svg>`,
+  tent: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 4L2 20h20z"/><line x1="12" y1="4" x2="12" y2="20"/></svg>`,
+  mountain: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M3 20l6-10 4 6 3-4 5 8z"/></svg>`,
+  compass: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><polygon points="16 8 14 14 8 16 10 10"/></svg>`,
+  cake: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M4 21v-6a2 2 0 012-2h12a2 2 0 012 2v6z"/><path d="M4 15c1-1 2-1 3 0s2 1 3 0 2-1 3 0 2 1 3 0 2-1 3 0"/><line x1="12" y1="7" x2="12" y2="11"/><circle cx="12" cy="5" r="1.5"/></svg>`,
+  burger: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M4 8a8 4 0 0116 0z"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M4 16h16a2 2 0 01-2 3H6a2 2 0 01-2-3z"/></svg>`,
+  wine: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M6 2h12l-1 8a5 5 0 01-10 0z"/><line x1="12" y1="14" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>`,
+  apple: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 8c-4-4-9-1-9 5 0 5 4 9 7 9 1 0 1-.5 2-.5s1 .5 2 .5c3 0 7-4 7-9 0-3-2-5-4-5-2 0-3 1-5 0z"/><path d="M11 8c0-2 1-4 2-5"/></svg>`,
+  bed: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M3 18v-7a2 2 0 012-2h14a2 2 0 012 2v7"/><line x1="3" y1="14" x2="21" y2="14"/><path d="M7 14V9a1 1 0 011-1h3a1 1 0 011 1v1"/><line x1="3" y1="18" x2="3" y2="20"/><line x1="21" y1="18" x2="21" y2="20"/></svg>`,
+  lamp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M6 4h12l3 7H3z"/><line x1="12" y1="11" x2="12" y2="20"/><line x1="8" y1="20" x2="16" y2="20"/></svg>`,
+  key: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="7" cy="15" r="4"/><path d="M10.5 11.5L20 2m0 0h-5m5 0v5M15 7l3 3"/></svg>`,
+  umbrella: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 2a10 10 0 00-10 10h4a2 2 0 014 0 2 2 0 004 0 2 2 0 014 0h4A10 10 0 0012 2z"/><path d="M12 12v7a2 2 0 01-4 0"/></svg>`,
+  graduationCap: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/><line x1="22" y1="9" x2="22" y2="16"/></svg>`,
+  printer: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>`,
+  calculator: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8" y2="11.01"/><line x1="12" y1="11" x2="12" y2="11.01"/><line x1="16" y1="11" x2="16" y2="11.01"/><line x1="8" y1="15" x2="8" y2="15.01"/><line x1="12" y1="15" x2="12" y2="15.01"/><line x1="16" y1="15" x2="16" y2="19"/><line x1="8" y1="19" x2="12" y2="19"/></svg>`,
+  creditCard: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>`,
+  coin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="9"/><line x1="12" y1="7" x2="12" y2="17"/><path d="M15 9.5c0-1-1.5-1.5-3-1.5s-3 .5-3 1.5 1.5 1.5 3 2 3 1 3 2-1.5 1.5-3 1.5-3-.5-3-1.5"/></svg>`,
+  headphones: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg>`,
+  bike: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M12 17.5V10l-3-4H6M12 10h4l2.5 7.5"/></svg>`,
+  trophy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4z"/><path d="M17 5h3a2 2 0 01-2 4h-1M7 5H4a2 2 0 002 4h1"/></svg>`,
+  football: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><polygon points="12 7 15.5 9.5 14 13.5 10 13.5 8.5 9.5"/><path d="M12 7V3M15.5 9.5l3.5-1.5M14 13.5l2 4M10 13.5l-2 4M8.5 9.5L5 8"/></svg>`,
+  basketball: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M12 2v20M2 12h20M4.5 4.5c3 3 3 12 0 15M19.5 4.5c-3 3-3 12 0 15"/></svg>`,
+  target: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`,
+  tree: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 2L6 11h3l-4 6h5v5h4v-5h5l-4-6h3z"/></svg>`,
+  flower: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="3"/><path d="M12 2a3 3 0 013 3 3 3 0 01-3 3 3 3 0 01-3-3 3 3 0 013-3zM12 16a3 3 0 013 3 3 3 0 01-3 3 3 3 0 01-3-3 3 3 0 013-3zM2 12a3 3 0 013-3 3 3 0 013 3 3 3 0 01-3 3 3 3 0 01-3-3zM16 12a3 3 0 013-3 3 3 0 013 3 3 3 0 01-3 3 3 3 0 01-3-3z"/></svg>`,
+  fish: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M2 12s4-6 11-6 9 6 9 6-4 6-9 6-11-6-11-6z"/><path d="M17 9l3-3M17 15l3 3"/><circle cx="7" cy="12" r="1"/></svg>`,
+  bird: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M16 7a4 4 0 00-4-4c-1 0-2 .5-2.5 1.5C8 4 6 5 6 7c0 1 .5 2 1.5 2.5C5 10 3 12 3 15c3 0 5-1 6-2 0 3-2 5-5 6 5 1 9-1 10-5 2 0 4-1 5-3-2 0-3-1-3-3z"/></svg>`,
+  bug: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="8" y="9" width="8" height="10" rx="4"/><path d="M12 9V6M9 6L7 4M15 6l2-2M4 12h4M16 12h4M5 17l3-1M19 17l-3-1"/></svg>`,
+  users: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>`,
+  thumbsUp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3z"/><path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>`,
+  flag: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="3"/></svg>`,
+  lock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>`,
+  wifi: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M5 13a10 10 0 0114 0M8.5 16.5a5 5 0 017 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>`,
+  battery: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="1" y="7" width="18" height="10" rx="2"/><line x1="23" y1="11" x2="23" y2="13"/><line x1="5" y1="11" x2="5" y2="13"/><line x1="9" y1="11" x2="9" y2="13"/><line x1="13" y1="11" x2="13" y2="13"/></svg>`,
 }
 
-// Auswahl für den Icon-Picker der Listen (Reihenfolge = Anzeige-Reihenfolge)
-const ICON_LIBRARY = [
-  { key: 'list',      name: 'Liste' },
-  { key: 'todo',      name: 'Checkliste' },
-  { key: 'kochliste', name: 'Kochen' },
-  { key: 'watchlist', name: 'Fernsehen' },
-  { key: 'cart',      name: 'Einkaufen' },
-  { key: 'gift',      name: 'Geschenke' },
-  { key: 'book',      name: 'Bücher' },
-  { key: 'music',     name: 'Musik' },
-  { key: 'send',      name: 'Reisen' },
-  { key: 'car',       name: 'Auto' },
-  { key: 'home',      name: 'Zuhause' },
-  { key: 'briefcase', name: 'Arbeit' },
-  { key: 'heart',     name: 'Herz' },
-  { key: 'star',      name: 'Favorit' },
-  { key: 'activity',  name: 'Fitness' },
-  { key: 'medical',   name: 'Gesundheit' },
-  { key: 'wallet',    name: 'Finanzen' },
-  { key: 'gamepad',   name: 'Gaming' },
-  { key: 'palette',   name: 'Kunst' },
-  { key: 'coffee',    name: 'Kaffee' },
-  { key: 'pizza',     name: 'Essen' },
-  { key: 'smile',     name: 'Spaß' },
-  { key: 'paw',       name: 'Haustier' },
-  { key: 'calendar',  name: 'Termine' },
-  { key: 'mapPin',    name: 'Ort' },
-  { key: 'phone',     name: 'Telefon' },
-  { key: 'laptop',    name: 'Technik' },
-  { key: 'lightbulb', name: 'Idee' },
-  { key: 'tag',       name: 'Etikett' },
-  { key: 'leaf',      name: 'Pflanzen' },
-  { key: 'sparkles',  name: 'Besonderes' },
-  { key: 'bookmark',  name: 'Merkzettel' },
-  { key: 'clock',     name: 'Zeit' },
-  { key: 'globe',     name: 'Welt' },
+// Anzeigenamen für Suche + Tooltip im Icon-Picker
+const ICON_NAMES = {
+  list: 'Liste', todo: 'Checkliste', heart: 'Herz', star: 'Favorit', calendar: 'Termine',
+  tag: 'Etikett', clock: 'Zeit', bookmark: 'Merkzettel', sparkles: 'Besonderes',
+  plane: 'Flugzeug', suitcase: 'Koffer', car: 'Auto', bus: 'Bus', train: 'Zug', ship: 'Schiff',
+  tent: 'Camping', mountain: 'Berge', compass: 'Kompass', mapPin: 'Ort', globe: 'Welt', send: 'Reisen',
+  kochliste: 'Kochen', pizza: 'Pizza', coffee: 'Kaffee', cake: 'Kuchen', burger: 'Burger', wine: 'Wein', apple: 'Obst',
+  home: 'Zuhause', bed: 'Schlafzimmer', lamp: 'Lampe', key: 'Schlüssel', umbrella: 'Regenschirm',
+  briefcase: 'Arbeit', book: 'Bücher', graduationCap: 'Studium', laptop: 'Laptop', printer: 'Drucker', calculator: 'Rechner',
+  medical: 'Gesundheit', activity: 'Fitness',
+  wallet: 'Finanzen', creditCard: 'Kreditkarte', coin: 'Geld',
+  gamepad: 'Gaming', music: 'Musik', palette: 'Kunst', camera: 'Fotografie', headphones: 'Kopfhörer', bike: 'Fahrrad', watchlist: 'Fernsehen',
+  trophy: 'Pokal', football: 'Fußball', basketball: 'Basketball', target: 'Ziel',
+  leaf: 'Pflanzen', paw: 'Haustier', tree: 'Baum', flower: 'Blumen', fish: 'Fisch', bird: 'Vogel', bug: 'Insekt',
+  smile: 'Spaß', users: 'Freunde', thumbsUp: 'Gefällt mir',
+  flag: 'Flagge', lightbulb: 'Idee', lock: 'Sicherheit', folder: 'Ordner', gift: 'Geschenke', cart: 'Einkaufen',
+  phone: 'Telefon', wifi: 'WLAN', battery: 'Akku',
+}
+
+// Kategorien für den Icon-Picker (Reihenfolge = Anzeige-Reihenfolge, wie bei
+// Emoji-Pickern in WhatsApp & Co. gruppiert)
+const ICON_CATEGORIES = [
+  { name: 'Häufig',               icons: ['list', 'todo', 'heart', 'star', 'calendar', 'tag', 'clock', 'bookmark'] },
+  { name: 'Reisen & Orte',        icons: ['plane', 'suitcase', 'car', 'bus', 'train', 'ship', 'tent', 'mountain', 'compass', 'mapPin', 'globe', 'send'] },
+  { name: 'Essen & Trinken',      icons: ['kochliste', 'pizza', 'coffee', 'cake', 'burger', 'wine', 'apple'] },
+  { name: 'Zuhause & Alltag',     icons: ['home', 'bed', 'lamp', 'key', 'umbrella'] },
+  { name: 'Arbeit & Bildung',     icons: ['briefcase', 'book', 'graduationCap', 'laptop', 'printer', 'calculator'] },
+  { name: 'Gesundheit & Fitness', icons: ['medical', 'activity'] },
+  { name: 'Finanzen',             icons: ['wallet', 'creditCard', 'coin', 'cart'] },
+  { name: 'Freizeit & Hobbys',    icons: ['gamepad', 'music', 'palette', 'camera', 'headphones', 'bike', 'watchlist'] },
+  { name: 'Sport',                icons: ['trophy', 'football', 'basketball', 'target'] },
+  { name: 'Natur & Tiere',        icons: ['leaf', 'paw', 'tree', 'flower', 'fish', 'bird', 'bug'] },
+  { name: 'Personen & Gefühle',   icons: ['smile', 'users', 'thumbsUp'] },
+  { name: 'Symbole',              icons: ['flag', 'lightbulb', 'lock', 'folder', 'gift', 'sparkles'] },
+  { name: 'Technik',              icons: ['phone', 'wifi', 'battery'] },
 ]
 
 // ── Default list configuration ─────────────────────────────────────────────
@@ -833,13 +872,32 @@ class ListApp {
 
   // ── Icon-Auswahl für Listen ─────────────────────
 
+  _iconSwatchHTML(key) {
+    const name = ICON_NAMES[key] || key
+    return `<button class="icon-picker-swatch" data-icon="${key}" title="${name}" aria-label="${name}">${ICONS[key]}</button>`
+  }
+
+  _iconPickerGridHTML(query) {
+    const q = (query || '').trim().toLowerCase()
+    if (q) {
+      const matches = Object.keys(ICON_NAMES).filter(key =>
+        ICON_NAMES[key].toLowerCase().includes(q) || key.toLowerCase().includes(q)
+      )
+      if (!matches.length) return `<p class="icon-picker-empty">Keine Icons gefunden.</p>`
+      return matches.map(key => this._iconSwatchHTML(key)).join('')
+    }
+    return ICON_CATEGORIES.map(cat =>
+      `<div class="icon-picker-category">${cat.name}</div>${cat.icons.map(key => this._iconSwatchHTML(key)).join('')}`
+    ).join('')
+  }
+
   _openIconPicker(lt) {
     this._iconPickerTargetList = lt
-    const grid = document.getElementById('icon-picker-grid')
-    grid.innerHTML = ICON_LIBRARY.map(i =>
-      `<button class="icon-picker-swatch" data-icon="${i.key}" title="${i.name}" aria-label="${i.name}">${ICONS[i.key]}</button>`
-    ).join('')
+    const search = document.getElementById('icon-picker-search')
+    search.value = ''
+    document.getElementById('icon-picker-grid').innerHTML = this._iconPickerGridHTML('')
     document.getElementById('icon-picker-backdrop').classList.add('open')
+    setTimeout(() => search.focus(), 60)
   }
 
   _closeIconPicker() {
@@ -2012,6 +2070,9 @@ class ListApp {
         this.setListIcon(lt, swatch.dataset.icon)
         this._closeIconPicker()
       }
+    })
+    document.getElementById('icon-picker-search').addEventListener('input', (e) => {
+      document.getElementById('icon-picker-grid').innerHTML = this._iconPickerGridHTML(e.target.value)
     })
 
     // ── Header: "+"-Menü, Benachrichtigungen, Theme
