@@ -63,19 +63,129 @@ const LIST_TYPES = ['todo', 'kochliste', 'watchlist', 'date-ideen']
 
 // Vorgefertigte Titelbild-Vorlagen für Projekte (statt Fotos aus der Galerie,
 // die im schmalen Cover-Format meist nur einen unschönen Ausschnitt zeigen).
+// Jede Vorlage: Farbverlauf (CSS-Klasse .cover-default-N) + kleine Silhouetten-
+// Szene (SVG), damit es wie eine echte Titelbild-Illustration wirkt statt nur
+// eine Flächenfarbe. Silhouetten sind bewusst neutral (schwarz/weiß, teil-
+// transparent), damit sie über jedem Verlauf funktionieren.
+const _SVG_OPEN = 'viewBox="0 0 300 180" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"'
+
+const COVER_SCENES = {
+  'cover-default-1': `<svg ${_SVG_OPEN}>
+    <circle cx="232" cy="46" r="20" fill="rgba(255,255,255,0.9)"/>
+    <path d="M0,122 Q37.5,107 75,122 T150,122 T225,122 T300,122 V180 H0 Z" fill="rgba(0,0,0,0.22)"/>
+    <path d="M0,148 Q37.5,135 75,148 T150,148 T225,148 T300,148 V180 H0 Z" fill="rgba(0,0,0,0.34)"/>
+  </svg>`,
+  'cover-default-2': `<svg ${_SVG_OPEN}>
+    <circle cx="252" cy="66" r="16" fill="rgba(255,255,255,0.8)"/>
+    <path d="M0,112 Q75,80 150,106 T300,98 V180 H0 Z" fill="rgba(0,0,0,0.22)"/>
+    <path d="M0,142 Q75,120 150,138 T300,130 V180 H0 Z" fill="rgba(0,0,0,0.35)"/>
+  </svg>`,
+  'cover-default-3': `<svg ${_SVG_OPEN}>
+    <circle cx="40" cy="30" r="1.6" fill="rgba(255,255,255,0.8)"/>
+    <circle cx="90" cy="20" r="1.3" fill="rgba(255,255,255,0.7)"/>
+    <circle cx="140" cy="35" r="1.6" fill="rgba(255,255,255,0.75)"/>
+    <circle cx="200" cy="18" r="1.3" fill="rgba(255,255,255,0.7)"/>
+    <circle cx="250" cy="28" r="1.6" fill="rgba(255,255,255,0.8)"/>
+    <circle cx="270" cy="45" r="1.3" fill="rgba(255,255,255,0.65)"/>
+    <rect x="15"  y="100" width="30" height="80"  fill="rgba(0,0,0,0.32)"/>
+    <rect x="52"  y="80"  width="25" height="100" fill="rgba(0,0,0,0.4)"/>
+    <rect x="84"  y="112" width="34" height="68"  fill="rgba(0,0,0,0.3)"/>
+    <rect x="124" y="60"  width="27" height="120" fill="rgba(0,0,0,0.42)"/>
+    <rect x="158" y="96"  width="30" height="84"  fill="rgba(0,0,0,0.32)"/>
+    <rect x="194" y="76"  width="26" height="104" fill="rgba(0,0,0,0.4)"/>
+    <rect x="227" y="106" width="32" height="74"  fill="rgba(0,0,0,0.3)"/>
+    <rect x="264" y="86"  width="28" height="94"  fill="rgba(0,0,0,0.38)"/>
+  </svg>`,
+  'cover-default-4': `<svg ${_SVG_OPEN}>
+    <circle cx="245" cy="38" r="14" fill="rgba(255,255,255,0.85)"/>
+    <polygon points="35,95 55,140 15,140" fill="rgba(0,0,0,0.24)"/>
+    <polygon points="90,85 112,138 68,138" fill="rgba(0,0,0,0.24)"/>
+    <polygon points="150,98 170,140 130,140" fill="rgba(0,0,0,0.24)"/>
+    <polygon points="15,130 45,180 -15,180" fill="rgba(0,0,0,0.4)"/>
+    <polygon points="80,120 115,180 45,180" fill="rgba(0,0,0,0.4)"/>
+    <polygon points="150,128 182,180 118,180" fill="rgba(0,0,0,0.4)"/>
+    <polygon points="220,118 255,180 185,180" fill="rgba(0,0,0,0.4)"/>
+    <polygon points="270,132 300,180 240,180" fill="rgba(0,0,0,0.4)"/>
+  </svg>`,
+  'cover-default-5': `<svg ${_SVG_OPEN}>
+    <circle cx="152" cy="66" r="27" fill="rgba(255,255,255,0.92)"/>
+    <polygon points="0,140 60,92 120,132 180,82 240,126 300,96 300,180 0,180" fill="rgba(0,0,0,0.22)"/>
+    <polygon points="0,162 70,122 140,156 210,112 300,152 300,180 0,180" fill="rgba(0,0,0,0.4)"/>
+  </svg>`,
+  'cover-default-6': `<svg ${_SVG_OPEN}>
+    <rect x="147" y="90" width="6" height="90" fill="rgba(0,0,0,0.35)"/>
+    <circle cx="150" cy="75" r="20" fill="rgba(255,255,255,0.55)"/>
+    <circle cx="128" cy="88" r="16" fill="rgba(255,255,255,0.5)"/>
+    <circle cx="174" cy="86" r="17" fill="rgba(255,255,255,0.5)"/>
+    <circle cx="150" cy="55" r="15" fill="rgba(255,255,255,0.5)"/>
+    <circle cx="70" cy="60" r="2.5" fill="rgba(255,255,255,0.6)"/>
+    <circle cx="100" cy="130" r="2" fill="rgba(255,255,255,0.55)"/>
+    <circle cx="220" cy="95" r="2.5" fill="rgba(255,255,255,0.6)"/>
+    <circle cx="240" cy="145" r="2" fill="rgba(255,255,255,0.5)"/>
+    <circle cx="55" cy="120" r="1.8" fill="rgba(255,255,255,0.5)"/>
+  </svg>`,
+  'cover-default-7': `<svg ${_SVG_OPEN}>
+    <circle cx="58" cy="52" r="19" fill="rgba(255,255,255,0.85)"/>
+    <path d="M0,130 Q60,105 120,128 T240,124 T300,132 V180 H0 Z" fill="rgba(0,0,0,0.18)"/>
+    <path d="M0,155 Q60,135 120,152 T240,148 T300,155 V180 H0 Z" fill="rgba(0,0,0,0.3)"/>
+  </svg>`,
+  'cover-default-8': `<svg ${_SVG_OPEN}>
+    <circle cx="222" cy="48" r="17" fill="rgba(255,255,255,0.9)"/>
+    <circle cx="230" cy="43" r="15" fill="rgba(0,0,0,0.55)"/>
+    <circle cx="35" cy="35" r="1.6" fill="rgba(255,255,255,0.8)"/>
+    <circle cx="70" cy="60" r="1.3" fill="rgba(255,255,255,0.65)"/>
+    <circle cx="110" cy="30" r="1.8" fill="rgba(255,255,255,0.8)"/>
+    <circle cx="150" cy="70" r="1.3" fill="rgba(255,255,255,0.6)"/>
+    <circle cx="45" cy="90" r="1.5" fill="rgba(255,255,255,0.65)"/>
+    <circle cx="130" cy="105" r="1.6" fill="rgba(255,255,255,0.7)"/>
+    <circle cx="180" cy="35" r="1.3" fill="rgba(255,255,255,0.65)"/>
+    <circle cx="270" cy="90" r="1.6" fill="rgba(255,255,255,0.7)"/>
+    <circle cx="20" cy="130" r="1.3" fill="rgba(255,255,255,0.55)"/>
+  </svg>`,
+  'cover-default-9': `<svg ${_SVG_OPEN}>
+    <circle cx="85" cy="48" r="18" fill="rgba(255,255,255,0.85)"/>
+    <path d="M205,180 Q195,130 215,100" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M215,100 Q180,85 155,100 Q182,98 210,112 Z" fill="rgba(0,0,0,0.34)"/>
+    <path d="M215,100 Q195,70 200,45 Q215,75 222,105 Z" fill="rgba(0,0,0,0.34)"/>
+    <path d="M215,100 Q248,80 270,90 Q240,95 220,110 Z" fill="rgba(0,0,0,0.34)"/>
+    <path d="M215,100 Q250,108 265,130 Q232,112 213,108 Z" fill="rgba(0,0,0,0.34)"/>
+  </svg>`,
+  'cover-default-10': `<svg ${_SVG_OPEN}>
+    <circle cx="55" cy="30" r="1.5" fill="rgba(255,255,255,0.7)"/>
+    <circle cx="250" cy="25" r="1.6" fill="rgba(255,255,255,0.7)"/>
+    <circle cx="180" cy="18" r="1.3" fill="rgba(255,255,255,0.6)"/>
+    <path d="M0,50 Q75,20 150,50 T300,45" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="18"/>
+    <path d="M0,75 Q75,50 150,78 T300,70" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="14"/>
+    <polygon points="0,150 70,115 140,148 210,110 300,145 300,180 0,180" fill="rgba(0,0,0,0.4)"/>
+  </svg>`,
+  'cover-default-11': `<svg ${_SVG_OPEN}>
+    <circle cx="255" cy="35" r="1.6" fill="rgba(255,255,255,0.7)"/>
+    <circle cx="225" cy="55" r="1.3" fill="rgba(255,255,255,0.6)"/>
+    <circle cx="40" cy="30" r="1.5" fill="rgba(255,255,255,0.65)"/>
+    <ellipse cx="145" cy="172" rx="16" ry="7" fill="rgba(255,190,110,0.55)"/>
+    <polygon points="95,180 130,110 165,180" fill="rgba(0,0,0,0.4)"/>
+    <polygon points="112,180 130,140 148,180" fill="rgba(0,0,0,0)" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
+    <polygon points="168,180 198,128 228,180" fill="rgba(0,0,0,0.3)"/>
+  </svg>`,
+  'cover-default-12': `<svg ${_SVG_OPEN}>
+    <path d="M0,120 Q75,95 150,118 T300,110 V180 H0 Z" fill="rgba(255,255,255,0.1)"/>
+    <path d="M0,145 Q75,125 150,143 T300,136 V180 H0 Z" fill="rgba(0,0,0,0.25)"/>
+  </svg>`,
+}
+
 const COVER_PRESETS = [
   { key: 'cover-default-1',  name: 'Ozean' },
-  { key: 'cover-default-2',  name: 'Bordeaux' },
-  { key: 'cover-default-3',  name: 'Violett' },
+  { key: 'cover-default-2',  name: 'Weinberge' },
+  { key: 'cover-default-3',  name: 'Skyline' },
   { key: 'cover-default-4',  name: 'Wald' },
   { key: 'cover-default-5',  name: 'Sonnenuntergang' },
   { key: 'cover-default-6',  name: 'Kirschblüte' },
-  { key: 'cover-default-7',  name: 'Gold' },
+  { key: 'cover-default-7',  name: 'Dünen' },
   { key: 'cover-default-8',  name: 'Mitternacht' },
-  { key: 'cover-default-9',  name: 'Minze' },
-  { key: 'cover-default-10', name: 'Beere' },
-  { key: 'cover-default-11', name: 'Feuer' },
-  { key: 'cover-default-12', name: 'Graphit' },
+  { key: 'cover-default-9',  name: 'Palme' },
+  { key: 'cover-default-10', name: 'Polarlicht' },
+  { key: 'cover-default-11', name: 'Lagerfeuer' },
+  { key: 'cover-default-12', name: 'Minimal' },
 ]
 
 const STORAGE_KEY = 'claude-list-app-v1'
@@ -893,7 +1003,7 @@ class ListApp {
     return `${projectsHTML}<div class="dashboard-lists">${loose.map(lt => this._cardHTML(lt)).join('')}</div>`
   }
 
-  // Titelbild: Foto > vorgefertigte Farbvorlage > deterministischer Auto-Fallback
+  // Titelbild: Foto > vorgefertigte Illustration > deterministischer Auto-Fallback
   _coverClass(p) {
     if (p.image) return ''
     return ` project-cover-default ${p.coverPreset || this._defaultCoverClass(p.id)}`
@@ -901,7 +1011,8 @@ class ListApp {
 
   _coverInner(p) {
     if (p.image) return `<img data-img="${p.image}" alt="" />`
-    return ICONS.folder
+    const key = p.coverPreset || this._defaultCoverClass(p.id)
+    return `<div class="cover-scene">${COVER_SCENES[key] || ''}</div>`
   }
 
   _projectDetailHTML(p) {
@@ -995,7 +1106,7 @@ class ListApp {
     this._coverPickerTargetProject = projectId
     const grid = document.getElementById('cover-picker-grid')
     grid.innerHTML = COVER_PRESETS.map(c =>
-      `<div class="cover-picker-swatch ${c.key}" data-preset="${c.key}" title="${c.name}" role="button" aria-label="${c.name}"></div>`
+      `<div class="cover-picker-swatch ${c.key}" data-preset="${c.key}" title="${c.name}" role="button" aria-label="${c.name}">${COVER_SCENES[c.key] || ''}</div>`
     ).join('') + `<div class="cover-picker-swatch gallery" data-gallery="1" title="Aus Fotos wählen" role="button" aria-label="Aus Fotos wählen">${ICONS.camera}</div>`
     document.getElementById('cover-picker-backdrop').classList.add('open')
   }
