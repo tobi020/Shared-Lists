@@ -177,7 +177,7 @@ body {
 .search-clear:hover { color: var(--text); }
 .search-clear.hidden { display: none; }
 
-.add-menu-btn, .settings-btn {
+.add-menu-btn, .notify-btn, .theme-btn {
   background: none;
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
@@ -191,7 +191,7 @@ body {
   transition: color var(--ease), border-color var(--ease), background var(--ease);
 }
 
-.add-menu-btn:hover, .settings-btn:hover {
+.add-menu-btn:hover, .notify-btn:hover, .theme-btn:hover {
   color: var(--text);
   border-color: var(--border-hover);
   background: var(--overlay-a);
@@ -1028,6 +1028,69 @@ body {
   background: var(--overlay-a);
 }
 
+/* ── Notify (Push) Button ─────────────────────── */
+.notify-btn .bell-on  { display: none; }
+.notify-btn .bell-off { display: block; }
+
+.notify-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.notify-btn.active .bell-on  { display: block; }
+.notify-btn.active .bell-off { display: none; }
+
+.notify-btn.denied {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.notify-btn.ios-hint {
+  opacity: 0.5;
+}
+
+.notify-btn.pending {
+  opacity: 0.6;
+  cursor: wait;
+  animation: bell-pulse 1s ease-in-out infinite;
+}
+
+@keyframes bell-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1;   }
+}
+
+/* ── Theme-Umschalter (modernes Icon-Morph) ────── */
+.theme-icon-stack {
+  position: relative;
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+.theme-icon-stack svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
+}
+
+.theme-icon-sun {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+.theme-icon-moon {
+  opacity: 0;
+  transform: rotate(-70deg) scale(0.4);
+}
+.theme-btn.light .theme-icon-sun {
+  opacity: 0;
+  transform: rotate(70deg) scale(0.4);
+}
+.theme-btn.light .theme-icon-moon {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
 /* ── Sync Indicator ───────────────────────────── */
 .sync-indicator {
   width: 8px;
@@ -1242,10 +1305,18 @@ body {
 }
 .project-cover-default svg { width: 40px; height: 40px; }
 
-.cover-default-1 { background: linear-gradient(135deg, #1e3a4a, #0f5e6e); }
-.cover-default-2 { background: linear-gradient(135deg, #3a2a1a, #7a1f2b); }
-.cover-default-3 { background: linear-gradient(135deg, #2a2a3a, #4a3a7a); }
-.cover-default-4 { background: linear-gradient(135deg, #1a3a2a, #0f6e56); }
+.cover-default-1  { background: linear-gradient(135deg, #1e3a4a, #0f5e6e); }
+.cover-default-2  { background: linear-gradient(135deg, #3a2a1a, #7a1f2b); }
+.cover-default-3  { background: linear-gradient(135deg, #2a2a3a, #4a3a7a); }
+.cover-default-4  { background: linear-gradient(135deg, #1a3a2a, #0f6e56); }
+.cover-default-5  { background: linear-gradient(135deg, #7a3a1a, #d9622f); }
+.cover-default-6  { background: linear-gradient(135deg, #4a1e3a, #a83e7a); }
+.cover-default-7  { background: linear-gradient(135deg, #4a3a10, #b8860b); }
+.cover-default-8  { background: linear-gradient(135deg, #0a0a2a, #1a1a5a); }
+.cover-default-9  { background: linear-gradient(135deg, #0a3a2e, #1fa373); }
+.cover-default-10 { background: linear-gradient(135deg, #2a0a3a, #7a2a9a); }
+.cover-default-11 { background: linear-gradient(135deg, #4a0e0e, #c23616); }
+.cover-default-12 { background: linear-gradient(135deg, #1a1a1a, #3a3a3a); }
 
 .project-cover-scrim {
   position: absolute;
@@ -1253,6 +1324,49 @@ body {
   background: linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.15) 55%, rgba(0,0,0,0) 100%);
   pointer-events: none;
 }
+
+/* ── Drag&Drop: Liste in Projekt ziehen ────────── */
+.project-card.project-drop-target .project-cover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+  transform: scale(1.015);
+}
+
+/* ── Titelbild-Auswahl (Vorlagen + Galerie) ────── */
+.cover-picker-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.cover-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.625rem;
+}
+
+.cover-picker-swatch {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform var(--ease), border-color var(--ease);
+}
+.cover-picker-swatch:hover { transform: scale(1.06); border-color: var(--border-hover); }
+
+.cover-picker-swatch.gallery {
+  background: var(--overlay-a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  border-style: dashed;
+}
+.cover-picker-swatch.gallery svg { width: 20px; height: 20px; }
+.cover-picker-swatch.gallery:hover { color: var(--text); }
 
 .project-menu-btn {
   position: absolute;

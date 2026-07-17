@@ -60,6 +60,24 @@ const LIST_CONFIGS = {
 }
 
 const LIST_TYPES = ['todo', 'kochliste', 'watchlist', 'date-ideen']
+
+// Vorgefertigte Titelbild-Vorlagen für Projekte (statt Fotos aus der Galerie,
+// die im schmalen Cover-Format meist nur einen unschönen Ausschnitt zeigen).
+const COVER_PRESETS = [
+  { key: 'cover-default-1',  name: 'Ozean' },
+  { key: 'cover-default-2',  name: 'Bordeaux' },
+  { key: 'cover-default-3',  name: 'Violett' },
+  { key: 'cover-default-4',  name: 'Wald' },
+  { key: 'cover-default-5',  name: 'Sonnenuntergang' },
+  { key: 'cover-default-6',  name: 'Kirschblüte' },
+  { key: 'cover-default-7',  name: 'Gold' },
+  { key: 'cover-default-8',  name: 'Mitternacht' },
+  { key: 'cover-default-9',  name: 'Minze' },
+  { key: 'cover-default-10', name: 'Beere' },
+  { key: 'cover-default-11', name: 'Feuer' },
+  { key: 'cover-default-12', name: 'Graphit' },
+]
+
 const STORAGE_KEY = 'claude-list-app-v1'
 const FIRESTORE_COLLECTION = 'rooms'
 
@@ -159,6 +177,7 @@ class ListApp {
         id: p.id,
         name: p.name,
         image: p.image || null,
+        coverPreset: p.coverPreset || null,
         listTypes: Array.isArray(p.listTypes) ? p.listTypes.filter(lt => known.has(lt)) : [],
       }))
   }
@@ -303,13 +322,13 @@ class ListApp {
   // ── Push-Benachrichtigungen ────────────────────
 
   async _initPush() {
+    const btn = document.getElementById('notify-btn')
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     const supported = ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window)
 
-    // iOS Safari (kein PWA): Menüpunkt zeigen, aber erklären wie's geht
-    if (!supported && isIOS) { this._notifySupported = true; this._setNotifyState('ios-hint'); return }
-    if (!supported) { this._notifySupported = false; this._setNotifyState('unsupported'); return }
-    this._notifySupported = true
+    // iOS Safari (kein PWA): Glocke zeigen, aber erklären wie's geht
+    if (!supported && isIOS) { this._setNotifyState('ios-hint'); return }
+    if (!supported) { if (btn) btn.style.display = 'none'; return }
 
     if (Notification.permission === 'denied') { this._setNotifyState('denied'); return }
     try {
@@ -326,8 +345,8 @@ class ListApp {
     }
   }
 
-  // Wird per Klick auf den Menüpunkt "Benachrichtigungen" im Einstellungen-Menü ausgelöst.
-  _onNotifyMenuClick() {
+  // Wird per Klick auf die Glocke im Header ausgelöst.
+  _onNotifyBtnClick() {
     if (this._notifyState === 'ios-hint') {
       alert('Benachrichtigungen funktionieren auf dem iPhone nur als App.\n\n1. Öffne diese Seite in Safari\n2. Teilen-Symbol → „Zum Home-Bildschirm"\n3. App von dort starten\n4. Glocke antippen')
       return
@@ -394,14 +413,20 @@ class ListApp {
 
   _setNotifyState(state) {
     this._notifyState = state
-    this._refreshSettingsMenu()
+    const btn = document.getElementById('notify-btn')
+    if (!btn) return
+    btn.classList.toggle('active',    state === 'active')
+    btn.classList.toggle('denied',    state === 'denied')
+    btn.classList.toggle('pending',   state === 'pending')
+    btn.classList.toggle('ios-hint',  state === 'ios-hint')
+    btn.title = this._notifyLabel()
   }
 
   _notifyLabel() {
     const labels = {
-      active:     'Benachrichtigungen deaktivieren',
+      active:     'Benachrichtigungen aktiv — zum Deaktivieren tippen',
       inactive:   'Benachrichtigungen aktivieren',
-      denied:     'Benachrichtigungen blockiert',
+      denied:     'Benachrichtigungen blockiert — in Browser-Einstellungen erlauben',
       pending:    'Warte auf Erlaubnis…',
       'ios-hint': 'Für Push: Zum Home-Bildschirm hinzufügen',
     }
@@ -615,6 +640,17 @@ class ListApp {
     this._save()
   }
 
+  // Per Drag&Drop auf eine Projekt-Karte gezogen: Liste gehört danach zu
+  // genau diesem Projekt (wird ggf. aus einem anderen Projekt entfernt).
+  addListToProject(lt, projectId) {
+    const proj = this.projects.find(p => p.id === projectId)
+    if (!proj) return
+    this.projects.forEach(p => { p.listTypes = p.listTypes.filter(t => t !== lt) })
+    proj.listTypes.push(lt)
+    this._save()
+    this._renderAll()
+  }
+
   addList(name) {
     const key = 'list-' + Date.now()
     this.listTypes.push(key)
@@ -669,7 +705,7 @@ class ListApp {
 
   addProject(name) {
     const id = 'proj-' + Date.now()
-    this.projects.push({ id, name, image: null, listTypes: [] })
+    this.projects.push({ id, name, image: null, coverPreset: null, listTypes: [] })
     this._save()
     this._renderAll()
   }
@@ -705,14 +741,25 @@ class ListApp {
     const p = this.projects.find(pr => pr.id === id)
     if (!p) return
     p.image = imageId
+    p.coverPreset = null
     this._save()
     this._renderAll()
   }
 
-  removeProjectImage(id) {
+  setProjectCoverPreset(id, key) {
+    const p = this.projects.find(pr => pr.id === id)
+    if (!p) return
+    p.coverPreset = key
+    p.image = null
+    this._save()
+    this._renderAll()
+  }
+
+  removeProjectCover(id) {
     const p = this.projects.find(pr => pr.id === id)
     if (!p) return
     p.image = null
+    p.coverPreset = null
     this._save()
     this._renderAll()
   }
@@ -755,7 +802,7 @@ class ListApp {
 
   _defaultCoverClass(id) {
     const n = [...String(id)].reduce((a, c) => a + c.charCodeAt(0), 0)
-    return `cover-default-${(n % 4) + 1}`
+    return `cover-default-${(n % 12) + 1}`
   }
 
   // ── Search / filter ────────────────────────────
@@ -846,11 +893,22 @@ class ListApp {
     return `${projectsHTML}<div class="dashboard-lists">${loose.map(lt => this._cardHTML(lt)).join('')}</div>`
   }
 
+  // Titelbild: Foto > vorgefertigte Farbvorlage > deterministischer Auto-Fallback
+  _coverClass(p) {
+    if (p.image) return ''
+    return ` project-cover-default ${p.coverPreset || this._defaultCoverClass(p.id)}`
+  }
+
+  _coverInner(p) {
+    if (p.image) return `<img data-img="${p.image}" alt="" />`
+    return ICONS.folder
+  }
+
   _projectDetailHTML(p) {
     const lists = p.listTypes.filter(lt => this.listTypes.includes(lt))
     const count = lists.length
-    const coverClass = p.image ? '' : ` project-cover-default ${this._defaultCoverClass(p.id)}`
-    const coverInner = p.image ? `<img data-img="${p.image}" alt="" />` : ICONS.folder
+    const coverClass = this._coverClass(p)
+    const coverInner = this._coverInner(p)
     const listsHTML = lists.length
       ? lists.map(lt => this._cardHTML(lt)).join('')
       : `<div class="project-empty-state">${ICONS.empty}<p>Noch keine Listen in diesem Projekt.</p></div>`
@@ -869,8 +927,8 @@ class ListApp {
 
   _projectCardHTML(p) {
     const count = p.listTypes.length
-    const coverClass = p.image ? '' : ` project-cover-default ${this._defaultCoverClass(p.id)}`
-    const coverInner = p.image ? `<img data-img="${p.image}" alt="" />` : ICONS.folder
+    const coverClass = this._coverClass(p)
+    const coverInner = this._coverInner(p)
     return `
 <div class="project-card" data-action="open-project" data-project="${p.id}">
   <div class="project-cover${coverClass}">
@@ -889,12 +947,13 @@ class ListApp {
     this._closeProjectMenu()
     const p = this.projects.find(pr => pr.id === id)
     if (!p) return
+    const hasCover = !!(p.image || p.coverPreset)
     const menu = document.createElement('div')
     menu.className = 'project-menu'
     menu.innerHTML = `
       <button data-pm="rename">${ICONS.pencil} Umbenennen</button>
-      <button data-pm="cover">${ICONS.camera} Titelbild ${p.image ? 'ändern' : 'festlegen'}</button>
-      ${p.image ? `<button data-pm="cover-remove">${ICONS.x} Titelbild entfernen</button>` : ''}
+      <button data-pm="cover">${ICONS.camera} Titelbild ${hasCover ? 'ändern' : 'festlegen'}</button>
+      ${hasCover ? `<button data-pm="cover-remove">${ICONS.x} Titelbild entfernen</button>` : ''}
       <button data-pm="delete" class="danger">${ICONS.trash} Projekt löschen</button>
     `
     document.body.appendChild(menu)
@@ -910,8 +969,8 @@ class ListApp {
       const action = btn.dataset.pm
       this._closeProjectMenu()
       if (action === 'rename')       this._startRenameProject(id)
-      if (action === 'cover')        { this._coverImageTargetProject = id; this._coverImageInput.click() }
-      if (action === 'cover-remove') this.removeProjectImage(id)
+      if (action === 'cover')        this._openCoverPicker(id)
+      if (action === 'cover-remove') this.removeProjectCover(id)
       if (action === 'delete')       this.deleteProject(id)
     })
 
@@ -930,59 +989,19 @@ class ListApp {
     if (this._projectMenuEl) { this._projectMenuEl.remove(); this._projectMenuEl = null }
   }
 
-  // ── Einstellungen-Menü (Header) ─────────────────
-  // Bündelt Push-Benachrichtigungen + Hell-/Dunkelmodus hinter einem Icon,
-  // damit der Header auf Mobile nicht überläuft.
+  // ── Titelbild-Auswahl: Vorlagen-Raster + "Aus Fotos wählen" ─────────────
 
-  _settingsMenuHTML() {
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light'
-    const notifyRow = this._notifySupported
-      ? `<button data-sm="notify" ${['pending'].includes(this._notifyState) ? 'disabled' : ''}>${this._notifyState === 'active' ? ICONS.bellOn : ICONS.bellOff} <span>${this._notifyLabel()}</span></button>`
-      : ''
-    const themeRow = `<button data-sm="theme">${isLight ? ICONS.moon : ICONS.sun} <span>${isLight ? 'Dunkelmodus aktivieren' : 'Hellmodus aktivieren'}</span></button>`
-    return notifyRow + themeRow
+  _openCoverPicker(projectId) {
+    this._coverPickerTargetProject = projectId
+    const grid = document.getElementById('cover-picker-grid')
+    grid.innerHTML = COVER_PRESETS.map(c =>
+      `<div class="cover-picker-swatch ${c.key}" data-preset="${c.key}" title="${c.name}" role="button" aria-label="${c.name}"></div>`
+    ).join('') + `<div class="cover-picker-swatch gallery" data-gallery="1" title="Aus Fotos wählen" role="button" aria-label="Aus Fotos wählen">${ICONS.camera}</div>`
+    document.getElementById('cover-picker-backdrop').classList.add('open')
   }
 
-  _openSettingsMenu(anchor) {
-    this._closeProjectMenu()
-    this._closeAddMenu()
-    const menu = document.createElement('div')
-    menu.className = 'project-menu'
-    menu.innerHTML = this._settingsMenuHTML()
-    document.body.appendChild(menu)
-    const r = anchor.getBoundingClientRect()
-    const menuWidth = 240
-    menu.style.top = Math.round(r.bottom + 6 + window.scrollY) + 'px'
-    menu.style.left = Math.round(Math.min(r.left, window.innerWidth - menuWidth - 8)) + 'px'
-    this._settingsMenuEl = menu
-    this._settingsMenuAnchor = anchor
-
-    menu.addEventListener('click', e => {
-      const btn = e.target.closest('[data-sm]')
-      if (!btn || btn.disabled) return
-      if (btn.dataset.sm === 'notify') this._onNotifyMenuClick()
-      if (btn.dataset.sm === 'theme')  { this._toggleThemeState(); this._closeSettingsMenu() }
-    })
-
-    setTimeout(() => {
-      document.addEventListener('click', this._settingsMenuOutsideHandler = (e) => {
-        if (this._settingsMenuEl && !this._settingsMenuEl.contains(e.target) && e.target !== anchor) this._closeSettingsMenu()
-      }, { capture: true })
-    }, 0)
-  }
-
-  _closeSettingsMenu() {
-    if (this._settingsMenuOutsideHandler) {
-      document.removeEventListener('click', this._settingsMenuOutsideHandler, { capture: true })
-      this._settingsMenuOutsideHandler = null
-    }
-    if (this._settingsMenuEl) { this._settingsMenuEl.remove(); this._settingsMenuEl = null }
-  }
-
-  // Aktualisiert das offene Menü in-place (z.B. nach Berechtigungs-Antwort),
-  // ohne es zu schließen.
-  _refreshSettingsMenu() {
-    if (this._settingsMenuEl) this._settingsMenuEl.innerHTML = this._settingsMenuHTML()
+  _closeCoverPicker() {
+    document.getElementById('cover-picker-backdrop').classList.remove('open')
   }
 
   // ── "+"-Menü (Header): Neue Liste / Neues Projekt ───────────────────────
@@ -990,7 +1009,6 @@ class ListApp {
   _onAddMenuClick(anchor) {
     if (this._currentProjectId) { this._openAddListModal(); return }
     this._closeProjectMenu()
-    this._closeSettingsMenu()
     const menu = document.createElement('div')
     menu.className = 'project-menu'
     menu.innerHTML = `
@@ -1596,6 +1614,7 @@ class ListApp {
   _applyTheme(theme) {
     if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light')
     else document.documentElement.removeAttribute('data-theme')
+    document.getElementById('theme-btn')?.classList.toggle('light', theme === 'light')
     const meta = document.querySelector('meta[name="theme-color"]')
     if (meta) meta.setAttribute('content', theme === 'light' ? '#f7f7f5' : '#0a0a0a')
   }
@@ -1728,9 +1747,36 @@ class ListApp {
       if (e.key === 'Escape') { e.preventDefault(); this._closeAddProjectModal() }
     })
 
-    // ── Header: "+"-Menü und Einstellungen-Menü
+    // ── Cover-Picker modal
+    document.getElementById('cover-picker-close').addEventListener('click', () => this._closeCoverPicker())
+    document.getElementById('cover-picker-backdrop').addEventListener('click', e => {
+      if (e.target === e.currentTarget) this._closeCoverPicker()
+    })
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && document.getElementById('cover-picker-backdrop').classList.contains('open')) {
+        this._closeCoverPicker()
+      }
+    })
+    document.getElementById('cover-picker-grid').addEventListener('click', e => {
+      const pid = this._coverPickerTargetProject
+      if (!pid) return
+      if (e.target.closest('[data-gallery]')) {
+        this._closeCoverPicker()
+        this._coverImageTargetProject = pid
+        this._coverImageInput.click()
+        return
+      }
+      const swatch = e.target.closest('[data-preset]')
+      if (swatch) {
+        this.setProjectCoverPreset(pid, swatch.dataset.preset)
+        this._closeCoverPicker()
+      }
+    })
+
+    // ── Header: "+"-Menü, Benachrichtigungen, Theme
     document.getElementById('add-menu-btn').addEventListener('click', (e) => this._onAddMenuClick(e.currentTarget))
-    document.getElementById('settings-btn').addEventListener('click', (e) => this._openSettingsMenu(e.currentTarget))
+    document.getElementById('notify-btn').addEventListener('click', () => this._onNotifyBtnClick())
+    document.getElementById('theme-btn').addEventListener('click', () => this._toggleThemeState())
 
     // ── Projekt-Titelbild (verstecktes File-Input, geteilt von allen Projekten)
     this._coverImageInput = document.createElement('input')
@@ -1876,24 +1922,42 @@ class ListApp {
   // ── Card drag-to-reorder ───────────────────────
   _initCardDrag() {
     const dash = document.getElementById('dashboard')
-    let dragLt = null, ghost = null, dropTarget = null
+    let dragLt = null, ghost = null, dropTarget = null, dropProjectId = null
 
     const cleanup = () => {
       ghost?.remove(); ghost = null
       document.querySelectorAll('.card').forEach(c =>
         c.classList.remove('card-dragging', 'card-drop-above', 'card-drop-below')
       )
-      dragLt = null; dropTarget = null
+      document.querySelectorAll('.project-card').forEach(c => c.classList.remove('project-drop-target'))
+      dragLt = null; dropTarget = null; dropProjectId = null
     }
 
-    const markTarget = (card, clientY) => {
+    // el: das Element unter dem Zeiger (noch nicht auf .card/.project-card reduziert)
+    const markTarget = (el, clientY) => {
       document.querySelectorAll('.card').forEach(c =>
         c.classList.remove('card-drop-above', 'card-drop-below')
       )
-      if (!card || card.id === `card-${dragLt}`) { dropTarget = null; return }
+      document.querySelectorAll('.project-card').forEach(c => c.classList.remove('project-drop-target'))
+      dropTarget = null; dropProjectId = null
+
+      const projectCard = el?.closest ? el.closest('.project-card') : null
+      if (projectCard) {
+        projectCard.classList.add('project-drop-target')
+        dropProjectId = projectCard.dataset.project
+        return
+      }
+
+      const card = el?.closest ? el.closest('.card') : null
+      if (!card || card.id === `card-${dragLt}`) return
       const above = clientY < card.getBoundingClientRect().top + card.offsetHeight / 2
       card.classList.add(above ? 'card-drop-above' : 'card-drop-below')
       dropTarget = { lt: card.id.replace('card-', ''), above }
+    }
+
+    const commitDrop = () => {
+      if (dragLt && dropProjectId) this.addListToProject(dragLt, dropProjectId)
+      else if (dragLt && dropTarget) this.reorderLists(dragLt, dropTarget.lt, dropTarget.above)
     }
 
     // ── HTML5 drag (Desktop) ──
@@ -1907,11 +1971,11 @@ class ListApp {
     dash.addEventListener('dragover', e => {
       if (!dragLt) return
       e.preventDefault()
-      markTarget(e.target.closest('.card'), e.clientY)
+      markTarget(e.target, e.clientY)
     })
     dash.addEventListener('drop', e => {
       e.preventDefault()
-      if (dragLt && dropTarget) this.reorderLists(dragLt, dropTarget.lt, dropTarget.above)
+      commitDrop()
       cleanup()
     })
     dash.addEventListener('dragend', cleanup)
@@ -1936,12 +2000,12 @@ class ListApp {
       const t = e.touches[0]
       if (ghost) ghost.style.top = (t.clientY - 24) + 'px'
       const el = document.elementFromPoint(t.clientX, t.clientY)
-      markTarget(el?.closest('.card'), t.clientY)
+      markTarget(el, t.clientY)
       e.preventDefault()
     }, { passive: false })
 
     dash.addEventListener('touchend', e => {
-      if (dragLt && dropTarget) this.reorderLists(dragLt, dropTarget.lt, dropTarget.above)
+      commitDrop()
       cleanup()
     })
   }
