@@ -893,6 +893,7 @@ class ListApp {
     const p = this.projects.find(pr => pr.id === id)
     if (!p) return
     this._currentProjectId = id
+    this._justOpenedProject = true
     this._renderAll()
     document.getElementById('dashboard').scrollTo({ top: 0 })
   }
@@ -977,6 +978,14 @@ class ListApp {
     this._applyAddPhotoStates()
     this._hydrateImages(dash)
     document.querySelectorAll('.priority-select').forEach(s => this._syncSelectColor(s))
+
+    // Kleine Eintritts-Animation, nur direkt nach openProject() — nicht bei
+    // jedem Re-Render (sonst würde sie z.B. bei jedem Remote-Sync erneut laufen).
+    if (this._justOpenedProject) {
+      dash.querySelector('.project-detail-header')?.classList.add('project-enter')
+      dash.querySelector('.dashboard-lists')?.classList.add('project-enter')
+      this._justOpenedProject = false
+    }
   }
 
   // ── Projekte: Rendering ─────────────────────────

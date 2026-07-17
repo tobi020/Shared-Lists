@@ -1420,6 +1420,17 @@ body {
   margin-bottom: 0.25rem;
 }
 
+/* Kleine Eintritts-Animation beim Öffnen eines Projekts (siehe openProject()) */
+@keyframes project-enter {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.project-detail-header.project-enter,
+.dashboard-lists.project-enter {
+  animation: project-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.dashboard-lists.project-enter { animation-delay: 0.06s; }
+
 .project-back-btn {
   position: absolute;
   top: 10px;
