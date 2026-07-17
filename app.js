@@ -24,7 +24,77 @@ const ICONS = {
   moon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`,
   bellOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>`,
   bellOn: `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0" fill="none"/></svg>`,
+
+  // Große Icon-Auswahl für Listen (gleicher Stil: 24x24, stroke-width 2, rund)
+  cart: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>`,
+  gift: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>`,
+  book: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>`,
+  music: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,
+  send: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
+  car: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M5 17h14a2 2 0 002-2v-3l-2.5-5h-13L3 12v3a2 2 0 002 2z"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>`,
+  home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+  briefcase: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>`,
+  heart: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>`,
+  star: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+  activity: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
+  medical: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`,
+  wallet: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>`,
+  gamepad: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="15" cy="13" r="1"/><circle cx="18" cy="11" r="1"/><rect x="2" y="6" width="20" height="12" rx="6"/></svg>`,
+  palette: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 22a10 10 0 110-20 8 8 0 018 8c0 2-2 3-4 3h-2a2 2 0 00-1 3.5c.5.8 0 2-1 2.5-1 .5-2 .5-2 3z"/><circle cx="7" cy="10" r="1"/><circle cx="10.5" cy="6.5" r="1"/><circle cx="16" cy="7.5" r="1"/></svg>`,
+  coffee: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v6a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>`,
+  pizza: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 2l10 7-10 13L2 9z"/><circle cx="12" cy="10" r="1.1"/><circle cx="9" cy="13" r="1"/><circle cx="15" cy="13" r="1"/></svg>`,
+  smile: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>`,
+  paw: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="6" cy="9" r="2"/><circle cx="18" cy="9" r="2"/><circle cx="9" cy="5" r="2"/><circle cx="15" cy="5" r="2"/><path d="M12 22c-3.5 0-6-2-6-4.5S8.5 13 12 13s6 2 6 4.5-2.5 4.5-6 4.5z"/></svg>`,
+  calendar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+  mapPin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
+  phone: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>`,
+  laptop: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="4" y="4" width="16" height="11" rx="1"/><line x1="2" y1="19" x2="22" y2="19"/></svg>`,
+  lightbulb: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7c.5.4.8 1 .8 1.7v.6h6.4v-.6c0-.7.3-1.3.8-1.7A7 7 0 0012 2z"/></svg>`,
+  tag: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M20.59 13.41L11 3.83A2 2 0 009.59 3H4a1 1 0 00-1 1v5.59a2 2 0 00.59 1.41l9.58 9.58a2 2 0 002.83 0l5.59-5.59a2 2 0 000-2.83z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>`,
+  leaf: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M11 20A7 7 0 019 6c0-1.5 1-3 3-4 3 4 6 5 6 10a7 7 0 01-7 8z"/><path d="M9 20c0-6 3-9 6-11"/></svg>`,
+  sparkles: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M19 15l.7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7z"/></svg>`,
+  bookmark: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>`,
+  clock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+  globe: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>`,
 }
+
+// Auswahl für den Icon-Picker der Listen (Reihenfolge = Anzeige-Reihenfolge)
+const ICON_LIBRARY = [
+  { key: 'list',      name: 'Liste' },
+  { key: 'todo',      name: 'Checkliste' },
+  { key: 'kochliste', name: 'Kochen' },
+  { key: 'watchlist', name: 'Fernsehen' },
+  { key: 'cart',      name: 'Einkaufen' },
+  { key: 'gift',      name: 'Geschenke' },
+  { key: 'book',      name: 'Bücher' },
+  { key: 'music',     name: 'Musik' },
+  { key: 'send',      name: 'Reisen' },
+  { key: 'car',       name: 'Auto' },
+  { key: 'home',      name: 'Zuhause' },
+  { key: 'briefcase', name: 'Arbeit' },
+  { key: 'heart',     name: 'Herz' },
+  { key: 'star',      name: 'Favorit' },
+  { key: 'activity',  name: 'Fitness' },
+  { key: 'medical',   name: 'Gesundheit' },
+  { key: 'wallet',    name: 'Finanzen' },
+  { key: 'gamepad',   name: 'Gaming' },
+  { key: 'palette',   name: 'Kunst' },
+  { key: 'coffee',    name: 'Kaffee' },
+  { key: 'pizza',     name: 'Essen' },
+  { key: 'smile',     name: 'Spaß' },
+  { key: 'paw',       name: 'Haustier' },
+  { key: 'calendar',  name: 'Termine' },
+  { key: 'mapPin',    name: 'Ort' },
+  { key: 'phone',     name: 'Telefon' },
+  { key: 'laptop',    name: 'Technik' },
+  { key: 'lightbulb', name: 'Idee' },
+  { key: 'tag',       name: 'Etikett' },
+  { key: 'leaf',      name: 'Pflanzen' },
+  { key: 'sparkles',  name: 'Besonderes' },
+  { key: 'bookmark',  name: 'Merkzettel' },
+  { key: 'clock',     name: 'Zeit' },
+  { key: 'globe',     name: 'Welt' },
+]
 
 // ── Default list configuration ─────────────────────────────────────────────
 
@@ -251,6 +321,7 @@ class ListApp {
     this.lists       = state.lists
     this.listTypes   = state.listTypes
     this.listNames   = state.listNames
+    this.listIcons   = state.listIcons
     this.projects    = state.projects
     this._currentProjectId = null   // null = Start-Ansicht
     this.globalSearch = ''
@@ -295,27 +366,28 @@ class ListApp {
   _loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return { lists: this._defaultLists(), listTypes: [...LIST_TYPES], listNames: {}, projects: [] }
+      if (!raw) return { lists: this._defaultLists(), listTypes: [...LIST_TYPES], listNames: {}, listIcons: {}, projects: [] }
       const parsed = JSON.parse(raw)
       // New format: { listTypes, listNames, lists, projects }
       if (parsed.lists && typeof parsed.lists === 'object' && !Array.isArray(parsed.lists)) {
         const listTypes = Array.isArray(parsed.listTypes) ? parsed.listTypes : [...LIST_TYPES]
         const listNames = (parsed.listNames && typeof parsed.listNames === 'object') ? parsed.listNames : {}
+        const listIcons = (parsed.listIcons && typeof parsed.listIcons === 'object') ? parsed.listIcons : {}
         const lists = {}
         for (const lt of listTypes) {
           lists[lt] = Array.isArray(parsed.lists[lt]) ? parsed.lists[lt] : []
         }
         const projects = this._sanitizeProjects(parsed.projects, listTypes)
-        return { lists, listTypes, listNames, projects }
+        return { lists, listTypes, listNames, listIcons, projects }
       }
       // Old format: { todo: [...], kochliste: [...], ... } — migrate transparently
       const lists = this._defaultLists()
       for (const lt of LIST_TYPES) {
         if (Array.isArray(parsed[lt])) lists[lt] = parsed[lt]
       }
-      return { lists, listTypes: [...LIST_TYPES], listNames: {}, projects: [] }
+      return { lists, listTypes: [...LIST_TYPES], listNames: {}, listIcons: {}, projects: [] }
     } catch {
-      return { lists: this._defaultLists(), listTypes: [...LIST_TYPES], listNames: {}, projects: [] }
+      return { lists: this._defaultLists(), listTypes: [...LIST_TYPES], listNames: {}, listIcons: {}, projects: [] }
     }
   }
 
@@ -324,6 +396,7 @@ class ListApp {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         listTypes: this.listTypes,
         listNames: this.listNames,
+        listIcons: this.listIcons,
         lists: this.lists,
         projects: this.projects,
       }))
@@ -340,6 +413,7 @@ class ListApp {
     this._setDocFn(roomRef, {
       listTypes: this.listTypes,
       listNames: this.listNames,
+      listIcons: this.listIcons,
       lists: this.lists,
       projects: this.projects,
       pushSubs: this._pushSubs || {},
@@ -393,6 +467,7 @@ class ListApp {
     if (!data || !data.lists || !data.listTypes) return
     this.listTypes = Array.isArray(data.listTypes) ? data.listTypes : this.listTypes
     this.listNames = (data.listNames && typeof data.listNames === 'object') ? data.listNames : this.listNames
+    this.listIcons = (data.listIcons && typeof data.listIcons === 'object') ? data.listIcons : this.listIcons
     const lists = {}
     for (const lt of this.listTypes) {
       lists[lt] = Array.isArray(data.lists[lt]) ? data.lists[lt] : []
@@ -748,6 +823,27 @@ class ListApp {
   renameList(lt, name) {
     this.listNames[lt] = name
     this._save()
+  }
+
+  setListIcon(lt, key) {
+    this.listIcons[lt] = key
+    this._save()
+    this._renderAll()
+  }
+
+  // ── Icon-Auswahl für Listen ─────────────────────
+
+  _openIconPicker(lt) {
+    this._iconPickerTargetList = lt
+    const grid = document.getElementById('icon-picker-grid')
+    grid.innerHTML = ICON_LIBRARY.map(i =>
+      `<button class="icon-picker-swatch" data-icon="${i.key}" title="${i.name}" aria-label="${i.name}">${ICONS[i.key]}</button>`
+    ).join('')
+    document.getElementById('icon-picker-backdrop').classList.add('open')
+  }
+
+  _closeIconPicker() {
+    document.getElementById('icon-picker-backdrop').classList.remove('open')
   }
 
   // Per Drag&Drop auf eine Projekt-Karte gezogen: Liste gehört danach zu
@@ -1194,9 +1290,13 @@ class ListApp {
     return span
   }
 
+  _listIcon(lt) {
+    return ICONS[this.listIcons[lt]] || ICONS[lt] || ICONS.list
+  }
+
   _cardHTML(lt) {
     const cfg = this._getConfig(lt)
-    const icon = ICONS[lt] || ICONS.list
+    const icon = this._listIcon(lt)
     const canDelete = this.listTypes.length > 1
     return `
 <div class="card" id="card-${lt}">
@@ -1204,7 +1304,7 @@ class ListApp {
     <div class="card-title-row">
       <div class="card-title">
         <div class="card-grip" data-drag-card="${lt}" title="Liste verschieben">${ICONS.grip}</div>
-        <div class="card-icon">${icon}</div>
+        <div class="card-icon" data-action="pick-icon" data-list="${lt}" title="Icon ändern">${icon}</div>
         <span class="card-label" data-action="start-rename" data-list="${lt}" title="Klicken zum Umbenennen">${this._getLabel(lt)}</span>
       </div>
       <div class="card-title-actions">
@@ -1767,6 +1867,7 @@ class ListApp {
       if (action === 'delete')       this.deleteItem(list, id)
       if (action === 'start-rename') this._startRename(list)
       if (action === 'delete-list')  this.deleteList(list)
+      if (action === 'pick-icon')    this._openIconPicker(list)
       if (action === 'open-project')         this.openProject(btn.dataset.project)
       if (action === 'close-project')        this.closeProject()
       if (action === 'project-menu')         this._openProjectMenu(btn.dataset.project, btn)
@@ -1775,7 +1876,7 @@ class ListApp {
         const row  = btn.closest('.list-item')
         const rowLt = row && row.dataset.list
         const item  = rowLt && (this.lists[rowLt] || []).find(i => i.id === row.dataset.id)
-        const ctx = { icon: ICONS[rowLt] || ICONS.list, name: item ? item.text : '' }
+        const ctx = { icon: rowLt ? this._listIcon(rowLt) : ICONS.list, name: item ? item.text : '' }
         this._imgGet(btn.dataset.imageId).then(url => { if (url) this._openImageViewer(url, ctx) })
       }
     })
@@ -1893,6 +1994,26 @@ class ListApp {
       }
     })
 
+    // ── Icon-Picker modal
+    document.getElementById('icon-picker-close').addEventListener('click', () => this._closeIconPicker())
+    document.getElementById('icon-picker-backdrop').addEventListener('click', e => {
+      if (e.target === e.currentTarget) this._closeIconPicker()
+    })
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && document.getElementById('icon-picker-backdrop').classList.contains('open')) {
+        this._closeIconPicker()
+      }
+    })
+    document.getElementById('icon-picker-grid').addEventListener('click', e => {
+      const lt = this._iconPickerTargetList
+      if (!lt) return
+      const swatch = e.target.closest('[data-icon]')
+      if (swatch) {
+        this.setListIcon(lt, swatch.dataset.icon)
+        this._closeIconPicker()
+      }
+    })
+
     // ── Header: "+"-Menü, Benachrichtigungen, Theme
     document.getElementById('add-menu-btn').addEventListener('click', (e) => this._onAddMenuClick(e.currentTarget))
     document.getElementById('notify-btn').addEventListener('click', () => this._onNotifyBtnClick())
@@ -1950,7 +2071,7 @@ class ListApp {
       let ctx = null
       if (this.editing) {
         const it = (this.lists[this.editing.listType] || []).find(i => i.id === this.editing.id)
-        ctx = { icon: ICONS[this.editing.listType] || ICONS.list, name: it ? it.text : '' }
+        ctx = { icon: this._listIcon(this.editing.listType), name: it ? it.text : '' }
       }
       this._openImageViewer(imgThumb.src, ctx)
     })
@@ -2020,7 +2141,7 @@ class ListApp {
     // Tap collapsed header → expand; tap chevron of open card → collapse
     dash.addEventListener('click', e => {
       if (window.innerWidth > 640) return
-      if (e.target.closest('.card-search, .delete-list-btn, .card-label, .card-grip')) return
+      if (e.target.closest('.card-search, .delete-list-btn, .card-label, .card-grip, .card-icon')) return
       const header = e.target.closest('.card-header')
       if (!header) return
       const card = header.closest('.card')

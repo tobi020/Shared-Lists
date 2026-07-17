@@ -351,7 +351,10 @@ body {
   justify-content: center;
   color: var(--accent);
   flex-shrink: 0;
+  cursor: pointer;
+  transition: transform var(--ease), background var(--ease);
 }
+.card-icon:hover { transform: scale(1.08); background: var(--accent-dim); filter: brightness(1.2); }
 
 .card-icon svg { display: block; }
 
@@ -1371,6 +1374,35 @@ body {
 .cover-picker-swatch.gallery svg { width: 20px; height: 20px; }
 .cover-picker-swatch.gallery:hover { color: var(--text); }
 
+/* ── Icon-Auswahl für Listen ───────────────────── */
+.icon-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.5rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.icon-picker-swatch {
+  aspect-ratio: 1;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: transform var(--ease), border-color var(--ease), color var(--ease), background var(--ease);
+}
+.icon-picker-swatch:hover {
+  transform: scale(1.08);
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+.icon-picker-swatch svg { width: 18px; height: 18px; display: block; }
+
 .project-menu-btn {
   position: absolute;
   top: 8px;
@@ -1543,4 +1575,5 @@ body {
   .projects-grid { grid-template-columns: 1fr; gap: 0.625rem; }
   .project-cover { height: 130px; }
   .project-detail-cover { height: 110px; }
+  .icon-picker-grid { grid-template-columns: repeat(5, 1fr); }
 }
